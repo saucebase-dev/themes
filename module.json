@@ -1,0 +1,11 @@
+{
+    "name": "Themes",
+    "alias": "themes",
+    "description": "Themes module",
+    "author": "Saucebase",
+    "version": "v1.0",
+    "keywords": ["themes"],
+    "priority": 0,
+    "providers": ["Modules\\Themes\\Providers\\ThemesServiceProvider"],
+    "files": []
+}

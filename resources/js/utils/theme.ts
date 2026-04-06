@@ -1,0 +1,135 @@
+import { FIELD_DEFS } from '../fields';
+import type { FieldState, Theme } from '../types';
+
+export const THEME_STORAGE_KEY = 'sb-theme-theme';
+
+// Allowlist derived from field definitions — only these vars are written as inline styles.
+const MANAGED_VARS_SET = new Set(FIELD_DEFS.flatMap((f) => f.vars));
+
+// Vars from non-color field types (font, unit/radius) are mode-agnostic.
+// Everything else in a theme JSON (colors, borders, cards, etc.) varies by mode.
+const NON_COLOR_FIELD_VARS = new Set(
+    FIELD_DEFS.filter((f) => f.type !== 'color').flatMap((f) => f.vars),
+);
+
+const FONT_FIELD_VARS = new Set(
+    FIELD_DEFS.filter((f) => f.type === 'font').flatMap((f) => f.vars),
+);
+
+function fontFallback(cssVar: string): string {
+    if (cssVar.includes('mono')) return 'monospace';
+    if (cssVar.includes('serif')) return 'serif';
+    return 'sans-serif';
+}
+
+export function loadGoogleFont(font: string): void {
+    if (typeof document === 'undefined' || !font) {
+        return;
+    }
+    const href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@400;500;600;700&display=swap`;
+    if (document.querySelector(`link[href="${href}"]`)) {
+        return;
+    }
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    document.head.appendChild(link);
+}
+
+export function applyFontClass(cssVar: string, font: string): void {
+    if (typeof document === 'undefined') return;
+    const styleId = `sb-theme-${cssVar.slice(2)}`; // "--font-sans" → "sb-theme-font-sans"
+    let el = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!el) {
+        el = document.createElement('style');
+        el.id = styleId;
+        document.head.appendChild(el);
+    }
+    const cls = cssVar.slice(2); // "--font-sans" → "font-sans"
+    el.textContent = font
+        ? `.${cls} { font-family: "${font}", ${fontFallback(cssVar)} !important; }`
+        : '';
+}
+
+export function setProperty(name: string, value: string): void {
+    document.documentElement.style.setProperty(name, value);
+}
+
+/** Extract font name from a CSS font-family value like '"Nunito", sans-serif' */
+export function parseFontName(cssFontFamily: string): string {
+    return cssFontFamily.replace(/["']/g, '').split(',')[0].trim();
+}
+
+export function applyThemeVars(theme: Theme | null, isDark: boolean): void {
+    if (typeof document === 'undefined') {
+        return;
+    }
+    const el = document.documentElement;
+
+    // Clear all inline CSS vars so stylesheet defaults can take over when theme is null
+    const toRemove: string[] = [];
+    for (let i = 0; i < el.style.length; i++) {
+        if (el.style[i].startsWith('--')) {
+            toRemove.push(el.style[i]);
+        }
+    }
+    toRemove.forEach((v) => el.style.removeProperty(v));
+
+    if (!theme) {
+        return;
+    }
+
+    const lightVars = theme.light ?? {};
+    const modeVars = isDark ? (theme.dark ?? {}) : lightVars;
+
+    // Apply only managed vars from the current mode — skip anything not in FIELD_DEFS
+    Object.entries(modeVars).forEach(([key, value]) => {
+        if (!MANAGED_VARS_SET.has(key)) return;
+        setProperty(key, value);
+        if (FONT_FIELD_VARS.has(key)) {
+            const name = parseFontName(value);
+            loadGoogleFont(name);
+            applyFontClass(key, name);
+        }
+    });
+
+    // Override mode-agnostic vars (font, radius) with light values so they
+    // remain consistent regardless of which mode is active
+    Object.entries(lightVars).forEach(([key, value]) => {
+        if (!NON_COLOR_FIELD_VARS.has(key)) return;
+        setProperty(key, value);
+        if (FONT_FIELD_VARS.has(key)) {
+            const name = parseFontName(value);
+            loadGoogleFont(name);
+            applyFontClass(key, name);
+        }
+    });
+}
+
+export function applyFieldToDom(field: FieldState, value: string): void {
+    if (field.type === 'color') {
+        field.vars.forEach((v) => setProperty(v, value));
+    } else if (field.type === 'unit') {
+        // field.value stores just the number (e.g. "1.225"); add unit before applying
+        const unit = field.props?.unit ?? 'rem';
+        const valueWithUnit = `${value}${unit}`;
+        field.vars.forEach((v) => setProperty(v, valueWithUnit));
+    } else if (field.type === 'font') {
+        loadGoogleFont(value);
+        field.vars.forEach((v) => {
+            applyFontClass(v, value);
+            setProperty(v, `"${value}", ${fontFallback(v)}`);
+        });
+    }
+}
+
+export function clearThemeOverrides(): void {
+    const el = document.documentElement;
+    const toRemove: string[] = [];
+    for (let i = 0; i < el.style.length; i++) {
+        if (el.style[i].startsWith('--')) {
+            toRemove.push(el.style[i]);
+        }
+    }
+    toRemove.forEach((v) => el.style.removeProperty(v));
+}
