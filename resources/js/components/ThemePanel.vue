@@ -46,7 +46,9 @@ import {
     applyFieldToDom,
     applyThemeVars,
     clearThemeOverrides,
+    computeShadows,
     parseFontName,
+    setProperty,
 } from '../utils/theme';
 
 import { FIELD_DEFS } from '../fields';
@@ -183,6 +185,12 @@ const groupModeSynced = reactive<Record<string, boolean>>(
 // Cache of synced color values — survives dark/light mode switches
 const modeSyncCache = reactive<Record<string, string>>({});
 
+// Per-mode cache for color edits — persists user edits across mode switches
+const modeColorEdits = reactive<Record<'light' | 'dark', Record<string, string>>>({
+    light: {},
+    dark: {},
+});
+
 // Snapshot of field values as loaded from the theme — used to detect live edits.
 const originalValues = ref<Record<string, string>>({});
 
@@ -226,15 +234,37 @@ function populateFieldsFromTheme(theme: Theme): void {
 // live non-color edits (radius, font) — they are mode-agnostic and should
 // persist across dark/light switches.
 watch(isDark, (dark) => {
-    applyThemeVars(currentTheme.value, dark);
+    const leavingMode = dark ? 'light' : 'dark';
+    const enteringMode = dark ? 'dark' : 'light';
+
+    // The theme's canonical color values for each mode.
+    const leavingThemeVars = (dark ? currentTheme.value?.light : currentTheme.value?.dark) ?? {};
+    const enteringThemeVars = (dark ? currentTheme.value?.dark : currentTheme.value?.light) ?? {};
+
+    // Save only genuine user edits for the leaving mode — values that differ from
+    // the theme's canonical color. Saving all field values would pollute the cache
+    // when the component starts in dark mode (field.value already holds dark colors).
     for (const field of fields) {
+        if (field.type !== 'color' || field.value === '') continue;
+        const themeDefault = leavingThemeVars[field.vars[0]];
+        if (themeDefault === undefined || field.value !== themeDefault) {
+            modeColorEdits[leavingMode][field.key] = field.value;
+        } else {
+            delete modeColorEdits[leavingMode][field.key];
+        }
+    }
+
+    applyThemeVars(currentTheme.value, dark);
+
+    for (const field of fields) {
+        // Non-color fields are mode-agnostic — always re-apply.
         if (field.type !== 'color' && field.value !== '') {
             applyFieldToDom(field, String(field.value));
         }
-        // Restore cached value for cross-mode synced groups.
-        // Must also call applyFieldToDom directly — if field.value hasn't changed
-        // Vue won't re-trigger the per-field watcher, leaving the DOM on the new
-        // mode's theme colors from applyThemeVars above.
+
+        // Cross-mode synced colors take precedence over per-mode edits.
+        // Must call applyFieldToDom directly — if field.value hasn't changed
+        // Vue won't re-trigger the per-field watcher.
         if (
             field.group &&
             groupModeSynced[field.group.name] &&
@@ -242,8 +272,29 @@ watch(isDark, (dark) => {
         ) {
             field.value = modeSyncCache[field.key];
             applyFieldToDom(field, modeSyncCache[field.key]);
+            continue;
+        }
+
+        if (field.type === 'color') {
+            const savedEdit = modeColorEdits[enteringMode][field.key];
+            if (savedEdit !== undefined) {
+                // Restore the user's live edit for this mode.
+                field.value = savedEdit;
+                applyFieldToDom(field, savedEdit);
+            } else {
+                // No user edit — sync field.value to the entering mode's theme value
+                // so the UI shows the correct mode-specific color.
+                const themeDefault = enteringThemeVars[field.vars[0]];
+                if (themeDefault !== undefined && field.value !== themeDefault) {
+                    field.value = themeDefault;
+                }
+            }
         }
     }
+
+    // Shadow composite vars (--shadow-md etc.) were cleared by applyThemeVars().
+    // They are not in MANAGED_VARS_SET so they won't be re-set unless we call this.
+    applyShadowVars();
 });
 
 // Populate field values from the active theme whenever it changes.
@@ -254,6 +305,10 @@ watch(
         if (!theme) {
             return;
         }
+        // Clear per-mode edit caches so stale edits from the previous theme
+        // don't bleed into the newly selected one.
+        modeColorEdits.light = {};
+        modeColorEdits.dark = {};
         applyThemeVars(theme, isDark.value);
         populateFieldsFromTheme(theme);
     },
@@ -277,6 +332,38 @@ for (const field of fields) {
         { immediate: true },
     );
 }
+
+// ── Shadow computed vars ──────────────────────────────────────────────────────
+
+function applyShadowVars(): void {
+    const color = fields.find((f) => f.key === 'shadow-color')?.value;
+    if (!color) return;
+
+    const opacity = parseFloat(fields.find((f) => f.key === 'shadow-opacity')?.value ?? '0.2');
+    const blur    = parseFloat(fields.find((f) => f.key === 'shadow-blur')?.value   ?? '30');
+    const spread  = parseFloat(fields.find((f) => f.key === 'shadow-spread')?.value ?? '-10');
+    const offsetX = parseFloat(fields.find((f) => f.key === 'shadow-offset-x')?.value ?? '0');
+    const offsetY = parseFloat(fields.find((f) => f.key === 'shadow-offset-y')?.value ?? '1');
+
+    const shadows = computeShadows(color, opacity, blur, spread, offsetX, offsetY);
+    for (const [key, value] of Object.entries(shadows)) {
+        setProperty(key, value);
+    }
+}
+
+// Re-compute whenever any shadow component var changes.
+watch(
+    () => [
+        fields.find((f) => f.key === 'shadow-color')?.value,
+        fields.find((f) => f.key === 'shadow-opacity')?.value,
+        fields.find((f) => f.key === 'shadow-blur')?.value,
+        fields.find((f) => f.key === 'shadow-spread')?.value,
+        fields.find((f) => f.key === 'shadow-offset-x')?.value,
+        fields.find((f) => f.key === 'shadow-offset-y')?.value,
+    ],
+    () => applyShadowVars(),
+    { immediate: true },
+);
 
 // ── Computed state ────────────────────────────────────────────────────────────
 
@@ -310,6 +397,10 @@ async function reset(): Promise<void> {
         return;
     }
     clearThemeOverrides();
+    
+    modeColorEdits.light = {};
+    modeColorEdits.dark = {};
+
     if (isDefault(selectedThemeId.value)) {
         // Already on the default theme — currentTheme won't change so the watcher
         // won't fire. Repopulate fields and re-apply manually.
@@ -618,6 +709,7 @@ const dialogCommandOpen = ref(false);
                             <Collapsible v-model:open="groupOpen[section.name]">
                                 <CollapsibleTrigger as-child>
                                     <button
+                                        :data-testid="`group-${section.name.toLowerCase()}`"
                                         class="focus-visible:ring-ring flex w-full cursor-pointer items-center justify-between px-4 py-3 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
                                         :class="
                                             groupOpen[section.name]

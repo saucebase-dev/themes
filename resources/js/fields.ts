@@ -2,9 +2,10 @@ import { trans } from 'laravel-vue-i18n';
 import type { FieldGroup, ThemeField } from './types';
 
 
-const SIZING_GROUP: FieldGroup = { name: 'Sizing' };
 const PRIMARY_GROUP: FieldGroup = { name: 'Primary', syncable: true };
 const SECONDARY_GROUP: FieldGroup = { name: 'Secondary', syncable: true };
+const SHADOW_GROUP: FieldGroup = { name: 'Shadow', collapsed: true, syncable: true };
+const SIZING_GROUP: FieldGroup = { name: 'Sizing', collapsed: true, syncable: true };
 const ACCENT_GROUP: FieldGroup = { name: 'Accent', collapsed: true };
 const COLORS_GROUP: FieldGroup = { name: 'Colors', collapsed: true };
 const MUTED_GROUP: FieldGroup = { name: 'Muted', collapsed: true };
@@ -13,8 +14,8 @@ const CARD_GROUP: FieldGroup = { name: 'Card', collapsed: true };
 const POPOVER_GROUP: FieldGroup = { name: 'Popover', collapsed: true };
 const BORDERS_GROUP: FieldGroup = { name: 'Borders', collapsed: true };
 const TYPOGRAPHY_GROUP: FieldGroup = { name: 'Typography', collapsed: true };
-const CHART_GROUP:      FieldGroup = { name: 'Chart',      collapsed: true };
-const SIDEBAR_GROUP:    FieldGroup = { name: 'Sidebar',    collapsed: true };
+const CHART_GROUP: FieldGroup = { name: 'Chart', collapsed: true };
+const SIDEBAR_GROUP: FieldGroup = { name: 'Sidebar', collapsed: true };
 
 export const FIELD_DEFS: ThemeField[] = [
     // ── Typography ─────────────────────────────────────────────────────────────
@@ -23,23 +24,6 @@ export const FIELD_DEFS: ThemeField[] = [
         label: trans('Sans'),
         type: 'font',
         vars: ['--font-sans'],
-    },
-    // ── Sizing ─────────────────────────────────────────────────────────────────
-    {
-        key: 'radius',
-        label: trans('Radius'),
-        type: 'unit',
-        vars: ['--radius'],
-        props: { min: 0, max: 1.5, step: 0.125, unit: 'rem' },
-        group: SIZING_GROUP,
-    },
-    {
-        key: 'spacing',
-        label: trans('Spacing'),
-        type: 'unit',
-        vars: ['--spacing'],
-        props: { min: 0.15, max: 0.35, step: 0.005, unit: 'rem' },
-        group: SIZING_GROUP,
     },
 
     // ── Primary ────────────────────────────────────────────────────────────────
@@ -72,6 +56,73 @@ export const FIELD_DEFS: ThemeField[] = [
         type: 'color',
         vars: ['--secondary-foreground'],
         group: SECONDARY_GROUP,
+    },
+
+    // ── Shadow ─────────────────────────────────────────────────────────────────
+    {
+        key: 'shadow-color',
+        label: trans('Color'),
+        type: 'color',
+        vars: ['--shadow-color'],
+        group: SHADOW_GROUP,
+    },
+    {
+        key: 'shadow-opacity',
+        label: trans('Opacity'),
+        type: 'unit',
+        vars: ['--shadow-opacity'],
+        props: { min: 0, max: 1, step: 0.01 },
+        group: SHADOW_GROUP,
+    },
+    {
+        key: 'shadow-blur',
+        label: trans('Blur'),
+        type: 'unit',
+        vars: ['--shadow-blur'],
+        props: { min: 0, max: 100, step: 1, unit: 'px' },
+        group: SHADOW_GROUP,
+    },
+    {
+        key: 'shadow-spread',
+        label: trans('Spread'),
+        type: 'unit',
+        vars: ['--shadow-spread'],
+        props: { min: -50, max: 50, step: 1, unit: 'px' },
+        group: SHADOW_GROUP,
+    },
+    {
+        key: 'shadow-offset-x',
+        label: trans('Offset X'),
+        type: 'unit',
+        vars: ['--shadow-offset-x'],
+        props: { min: -50, max: 50, step: 1, unit: 'px' },
+        group: SHADOW_GROUP,
+    },
+    {
+        key: 'shadow-offset-y',
+        label: trans('Offset Y'),
+        type: 'unit',
+        vars: ['--shadow-offset-y'],
+        props: { min: -50, max: 50, step: 1, unit: 'px' },
+        group: SHADOW_GROUP,
+    },
+
+    // ── Sizing ─────────────────────────────────────────────────────────────────
+    {
+        key: 'radius',
+        label: trans('Radius'),
+        type: 'unit',
+        vars: ['--radius'],
+        props: { min: 0, max: 1.5, step: 0.125, unit: 'rem' },
+        group: SIZING_GROUP,
+    },
+    {
+        key: 'spacing',
+        label: trans('Spacing'),
+        type: 'unit',
+        vars: ['--spacing'],
+        props: { min: 0.15, max: 0.35, step: 0.005, unit: 'rem' },
+        group: SIZING_GROUP,
     },
 
     // ── Accent ─────────────────────────────────────────────────────────────────

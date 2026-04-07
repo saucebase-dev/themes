@@ -6,9 +6,9 @@ use Illuminate\Console\Command;
 
 class ApplyThemeCommand extends Command
 {
-    protected $signature = 'saucebase:theme:apply {theme : The theme ID to apply (e.g. carbonara)}';
+    protected $signature = 'saucebase:theme:apply {theme : The theme ID to apply (e.g. blueberry)}';
 
-    protected $description = 'Apply a theme by patching its variables into theme.css :root and .dark';
+    protected $description = 'Apply a theme by patching its variables into theme.css';
 
     public function handle(): int
     {

@@ -9,7 +9,7 @@ export type Unit = {
   min?: number;
   max?: number;
   step?: number;
-  unit?: 'px' | 'rem' | 'em' | '%';
+  unit?: 'px' | 'rem' | 'em' | '%' | ''; 
 }
 
 type ThemeFieldConfig = {

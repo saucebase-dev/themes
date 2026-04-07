@@ -10,6 +10,15 @@ async function getCssVar(page: Page, varName: string): Promise<string> {
     );
 }
 
+async function switchColorMode(page: Page, mode: 'dark' | 'light') {
+    await page.getByTestId(`color-mode-${mode}`).click();
+    if (mode === 'dark') {
+        await page.waitForFunction(() => document.documentElement.classList.contains('dark'));
+    } else {
+        await page.waitForFunction(() => !document.documentElement.classList.contains('dark'));
+    }
+}
+
 test.describe('Theme panel', () => {
     test.beforeEach(async ({ page, laravel }) => {
         await laravel.callFunction('Modules\\Themes\\Tests\\Support\\ThemesTestHelper::cleanUserThemes');
@@ -104,6 +113,7 @@ test.describe('Theme panel', () => {
 
     test('slider input updates CSS custom property live', async ({ page }) => {
         await page.getByTestId('theme-panel-trigger').click();
+        await page.getByTestId('group-sizing').click();
 
         const radiusInput = page.getByTestId('slider-input-radius');
         await radiusInput.fill('0.5');
@@ -121,5 +131,101 @@ test.describe('Theme panel', () => {
 
         const cssVar = await getCssVar(page, '--font-sans');
         expect(cssVar.toLowerCase()).toContain('inter');
+    });
+
+    test('color input value persists after switching to dark mode and back', async ({ page }) => {
+        await page.getByTestId('theme-panel-trigger').click();
+
+        const colorInput = page.getByTestId('color-input-primary');
+        await colorInput.fill('#ff0000');
+        await colorInput.press('Tab');
+
+        await switchColorMode(page, 'dark');
+        await switchColorMode(page, 'light');
+
+        const cssVar = await getCssVar(page, '--primary');
+        expect(cssVar).toBe('#ff0000');
+    });
+
+    test('dark and light mode color edits are independent', async ({ page }) => {
+        await page.getByTestId('theme-panel-trigger').click();
+
+        const colorInput = page.getByTestId('color-input-primary');
+        await colorInput.fill('#ff0000');
+        await colorInput.press('Tab');
+
+        await switchColorMode(page, 'dark');
+        await colorInput.fill('#0000ff');
+        await colorInput.press('Tab');
+
+        await switchColorMode(page, 'light');
+        expect(await getCssVar(page, '--primary')).toBe('#ff0000');
+
+        await switchColorMode(page, 'dark');
+        expect(await getCssVar(page, '--primary')).toBe('#0000ff');
+    });
+
+    test('radius input value persists after switching dark mode and back', async ({ page }) => {
+        await page.getByTestId('theme-panel-trigger').click();
+        await page.getByTestId('group-sizing').click();
+
+        const radiusInput = page.getByTestId('slider-input-radius');
+        await radiusInput.fill('0.25');
+        await radiusInput.press('Tab');
+
+        await switchColorMode(page, 'dark');
+        await switchColorMode(page, 'light');
+
+        const cssVar = await getCssVar(page, '--radius');
+        expect(cssVar).toBe('0.25rem');
+    });
+
+    test('shadow group expands to reveal controls', async ({ page }) => {
+        await page.getByTestId('theme-panel-trigger').click();
+        await page.getByTestId('group-shadow').click();
+
+        await expect(page.getByTestId('slider-input-shadow-blur')).toBeVisible();
+        await expect(page.getByTestId('slider-input-shadow-opacity')).toBeVisible();
+        await expect(page.getByTestId('slider-input-shadow-spread')).toBeVisible();
+        await expect(page.getByTestId('slider-input-shadow-offset-x')).toBeVisible();
+        await expect(page.getByTestId('slider-input-shadow-offset-y')).toBeVisible();
+        await expect(page.getByTestId('color-input-shadow-color')).toBeVisible();
+    });
+
+    test('shadow blur slider recomputes --shadow-md', async ({ page }) => {
+        await page.getByTestId('theme-panel-trigger').click();
+        await page.getByTestId('group-shadow').click();
+
+        const blurInput = page.getByTestId('slider-input-shadow-blur');
+        await blurInput.fill('20');
+        await blurInput.press('Tab');
+
+        const shadowMd = await getCssVar(page, '--shadow-md');
+        expect(shadowMd).toContain('20px');
+    });
+
+    test('shadow color input recomputes --shadow-md', async ({ page }) => {
+        await page.getByTestId('theme-panel-trigger').click();
+        await page.getByTestId('group-shadow').click();
+
+        const colorInput = page.getByTestId('color-input-shadow-color');
+        await colorInput.fill('#ff0000');
+        await colorInput.press('Tab');
+
+        const shadowMd = await getCssVar(page, '--shadow-md');
+        expect(shadowMd.toLowerCase()).toContain('#ff0000');
+    });
+
+    test('color input hex text reflects edited value after mode round-trip', async ({ page }) => {
+        await page.getByTestId('theme-panel-trigger').click();
+
+        const colorInput = page.getByTestId('color-input-primary');
+        await colorInput.fill('#aabbcc');
+        await colorInput.press('Tab');
+
+        await switchColorMode(page, 'dark');
+        await switchColorMode(page, 'light');
+
+        await expect(colorInput).toHaveValue('#aabbcc');
     });
 });

@@ -123,6 +123,44 @@ export function applyFieldToDom(field: FieldState, value: string): void {
     }
 }
 
+function shadowLayer(
+    x: number,
+    y: number,
+    blur: number,
+    spread: number,
+    color: string,
+    opacity: number,
+): string {
+    return `${x}px ${y}px ${blur}px ${spread}px color-mix(in srgb, ${color} ${(opacity * 100).toFixed(1)}%, transparent)`;
+}
+
+/**
+ * Compute all 8 shadow scale values from the 6 component vars.
+ * Returns a map of CSS var name → computed box-shadow string.
+ */
+export function computeShadows(
+    color: string,
+    opacity: number,
+    blur: number,
+    spread: number,
+    offsetX: number,
+    offsetY: number,
+): Record<string, string> {
+    const l1 = (mult: number) => shadowLayer(offsetX, offsetY, blur, spread, color, opacity * mult);
+    const l2 = (y2: number, blur2: number) => shadowLayer(offsetX, y2, blur2, spread - 1, color, opacity);
+    const smLayers = `${l1(1)}, ${l2(1, 2)}`;
+    return {
+        '--shadow-2xs': l1(0.5),
+        '--shadow-xs': l1(0.5),
+        '--shadow-sm': smLayers,
+        '--shadow': smLayers,
+        '--shadow-md': `${l1(1)}, ${l2(2, 4)}`,
+        '--shadow-lg': `${l1(1)}, ${l2(4, 6)}`,
+        '--shadow-xl': `${l1(1)}, ${l2(8, 10)}`,
+        '--shadow-2xl': l1(2.5),
+    };
+}
+
 export function clearThemeOverrides(): void {
     const el = document.documentElement;
     const toRemove: string[] = [];
