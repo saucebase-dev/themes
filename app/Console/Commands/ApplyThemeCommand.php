@@ -69,7 +69,7 @@ class ApplyThemeCommand extends Command
             : [];
 
         $light = array_merge($themeVars, $lightVars);
-        $dark = array_merge($themeVars, $darkVars);
+        $dark = $darkVars; // theme vars belong in :root only, not .dark
 
         if (empty($light) && empty($dark)) {
             $this->error("Invalid theme file format: {$jsonPath}");

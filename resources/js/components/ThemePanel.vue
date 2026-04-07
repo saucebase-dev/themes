@@ -25,6 +25,12 @@ import IconSave from '~icons/lucide/save';
 import IconTerminal from '~icons/lucide/terminal';
 import IconX from '~icons/lucide/x';
 
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import ThemeSelector from '@/components/ThemeSelector.vue';
 import { computed, reactive, ref, watch } from 'vue';
 import type { FieldState, Font, Theme } from '../types';
@@ -38,7 +44,7 @@ import DialogCommand from './DialogCommand.vue';
 import DialogSave from './DialogSave.vue';
 import FontPicker from './FontPicker.vue';
 import SliderInput from './SliderInput.vue';
-import SyncToggle from './SyncToggle.vue';
+import SyncToggle from './LinkToggle.vue';
 import ThemePicker from './ThemePicker.vue';
 
 import {
@@ -46,7 +52,9 @@ import {
     applyFieldToDom,
     applyThemeVars,
     clearThemeOverrides,
+    computeRadiusScale,
     computeShadows,
+    computeTrackingScale,
     parseFontName,
     setProperty,
 } from '../utils/theme';
@@ -177,10 +185,8 @@ const groupOpen = reactive<Record<string, boolean>>(
     ),
 );
 
-// Per-group cross-mode sync: when on, color changes apply to both light and dark
-const groupModeSynced = reactive<Record<string, boolean>>(
-    Object.fromEntries(uniqueGroups.map((g) => [g.name, false])),
-);
+// Per-field cross-mode sync: when on, changes to that field apply to both light and dark
+const fieldSynced = reactive<Record<string, boolean>>({});
 
 // Cache of synced color values — survives dark/light mode switches
 const modeSyncCache = reactive<Record<string, string>>({});
@@ -262,14 +268,8 @@ watch(isDark, (dark) => {
             applyFieldToDom(field, String(field.value));
         }
 
-        // Cross-mode synced colors take precedence over per-mode edits.
-        // Must call applyFieldToDom directly — if field.value hasn't changed
-        // Vue won't re-trigger the per-field watcher.
-        if (
-            field.group &&
-            groupModeSynced[field.group.name] &&
-            modeSyncCache[field.key] !== undefined
-        ) {
+        // Cross-mode synced fields take precedence over per-mode edits.
+        if (fieldSynced[field.key] && modeSyncCache[field.key] !== undefined) {
             field.value = modeSyncCache[field.key];
             applyFieldToDom(field, modeSyncCache[field.key]);
             continue;
@@ -323,8 +323,8 @@ for (const field of fields) {
         (value) => {
             if (value !== '' && value !== undefined && value !== null) {
                 applyFieldToDom(field, String(value));
-                // Mirror to cache when cross-mode sync is on for this group
-                if (field.group && groupModeSynced[field.group.name]) {
+                // Mirror to cache when cross-mode sync is on for this field
+                if (fieldSynced[field.key]) {
                     modeSyncCache[field.key] = String(value);
                 }
             }
@@ -373,10 +373,6 @@ const hasLiveEdits = computed(() =>
 
 const canReset = computed(
     () => !isDefault(selectedThemeId.value) || hasLiveEdits.value,
-);
-
-const canSave = computed(
-    () => allowEditing.value && (currentTheme.value?.editable ?? false),
 );
 
 // ── Reset ─────────────────────────────────────────────────────────────────────
@@ -449,7 +445,7 @@ function toJson(inputName: string) {
             continue;
 
         if (field.type === 'color') {
-            const isSynced = field.group && groupModeSynced[field.group.name];
+            const isSynced = fieldSynced[field.key];
             if (isSynced) {
                 // Cross-mode sync: write current value to both modes
                 for (const target of [light, dark]) {
@@ -475,11 +471,28 @@ function toJson(inputName: string) {
                 }
             }
         } else if (field.type === 'unit') {
-            // Unit fields (radius, spacing) are mode-agnostic — write to theme section
             const unit = field.props?.unit ?? 'rem';
             const valueWithUnit = `${field.value}${unit}`;
-            for (const v of field.vars) {
-                theme[stripPrefix(v)] = valueWithUnit;
+            if (field.perMode) {
+                // Per-mode unit (e.g. shadow-opacity): write to light/dark like a color field
+                const isSynced = fieldSynced[field.key];
+                if (isSynced) {
+                    for (const target of [light, dark]) {
+                        for (const v of field.vars) target[stripPrefix(v)] = valueWithUnit;
+                    }
+                } else {
+                    const currentTarget = isDark.value ? dark : light;
+                    for (const v of field.vars) currentTarget[stripPrefix(v)] = valueWithUnit;
+                    const otherTarget = isDark.value ? light : dark;
+                    const otherSource = isDark.value ? currentTheme.value?.light : currentTheme.value?.dark;
+                    for (const v of field.vars) {
+                        const val = otherSource?.[v];
+                        if (val) otherTarget[stripPrefix(v)] = val;
+                    }
+                }
+            } else {
+                // Mode-agnostic — write to theme section
+                for (const v of field.vars) theme[stripPrefix(v)] = valueWithUnit;
             }
         } else if (field.type === 'font') {
             // Font fields are mode-agnostic — write to theme section
@@ -492,6 +505,35 @@ function toJson(inputName: string) {
             for (const v of field.vars) {
                 theme[stripPrefix(v)] = cssValue;
             }
+        }
+    }
+
+    // Append computed scale values to the theme section
+    const radiusField = fields.find((f) => f.key === 'radius');
+    if (radiusField?.value && radiusField.type === 'unit') {
+        const radiusVal = `${radiusField.value}${radiusField.props?.unit ?? 'rem'}`;
+        for (const [k, v] of Object.entries(computeRadiusScale(radiusVal))) {
+            theme[stripPrefix(k)] = v;
+        }
+    }
+
+    const trackingField = fields.find((f) => f.key === 'tracking-normal');
+    if (trackingField?.value) {
+        for (const [k, v] of Object.entries(computeTrackingScale(parseFloat(trackingField.value)))) {
+            theme[stripPrefix(k)] = v;
+        }
+    }
+
+    // Shadow strings for light mode stored in theme section
+    const shadowColorLight = light['shadow-color'] ?? currentTheme.value?.light['--shadow-color'];
+    const shadowOpacityLight = parseFloat(light['shadow-opacity'] ?? currentTheme.value?.light['--shadow-opacity'] ?? '0.2');
+    const shadowBlur = parseFloat(theme['shadow-blur'] ?? '30');
+    const shadowSpread = parseFloat(theme['shadow-spread'] ?? '-10');
+    const shadowOffsetX = parseFloat(theme['shadow-offset-x'] ?? '0');
+    const shadowOffsetY = parseFloat(theme['shadow-offset-y'] ?? '1');
+    if (shadowColorLight) {
+        for (const [k, v] of Object.entries(computeShadows(shadowColorLight, shadowOpacityLight, shadowBlur, shadowSpread, shadowOffsetX, shadowOffsetY))) {
+            theme[stripPrefix(k)] = v;
         }
     }
 
@@ -508,24 +550,18 @@ function toJson(inputName: string) {
     };
 }
 
-// When cross-mode sync is toggled on: snapshot current values into cache.
-// When toggled off: clear the cache for that group.
+// When per-field sync is toggled on: snapshot current value into cache.
+// When toggled off: clear the cache for that field.
 watch(
-    groupModeSynced,
+    fieldSynced,
     (map) => {
-        for (const [groupName, synced] of Object.entries(map)) {
-            if (synced) {
-                for (const field of fields) {
-                    if (field.group?.name === groupName && field.value !== '') {
-                        modeSyncCache[field.key] = field.value;
-                    }
-                }
+        for (const [fieldKey, synced] of Object.entries(map)) {
+            const field = fields.find((f) => f.key === fieldKey);
+            if (!field) continue;
+            if (synced && field.value !== '') {
+                modeSyncCache[fieldKey] = field.value;
             } else {
-                for (const field of fields) {
-                    if (field.group?.name === groupName) {
-                        delete modeSyncCache[field.key];
-                    }
-                }
+                delete modeSyncCache[fieldKey];
             }
         }
     },
@@ -723,38 +759,10 @@ const dialogCommandOpen = ref(false);
                                         >
                                         <div class="flex items-center gap-2">
                                             <SyncToggle
-                                                v-if="
-                                                    section.name === 'Sidebar'
-                                                "
+                                                v-if="section.name === 'Sidebar'"
                                                 v-model="sidebarSynced"
-                                                :tooltip="
-                                                    $t(
-                                                        'Sync sidebar colors with main theme',
-                                                    )
-                                                "
-                                                :tooltip-active="
-                                                    $t(
-                                                        'Sidebar is synced with main theme colors — click to disable',
-                                                    )
-                                                "
-                                            />
-                                            <SyncToggle
-                                                v-if="section.syncable"
-                                                v-model="
-                                                    groupModeSynced[
-                                                        section.name
-                                                    ]
-                                                "
-                                                :tooltip="
-                                                    $t(
-                                                        'Sync colors across light and dark modes',
-                                                    )
-                                                "
-                                                :tooltip-active="
-                                                    $t(
-                                                        'Colors are synced across modes — click to disable',
-                                                    )
-                                                "
+                                                :tooltip="$t('Sync sidebar colors with main theme')"
+                                                :tooltip-active="$t('Sidebar is synced with main theme colors — click to disable')"
                                             />
                                             <IconChevronDown
                                                 class="text-muted-foreground size-4 shrink-0 transition-transform duration-200"
@@ -807,6 +815,7 @@ const dialogCommandOpen = ref(false);
                                                 :label="$t(field.label)"
                                                 :test-id="`color-input-${field.key}`"
                                                 v-model="field.value"
+                                                v-model:synced="fieldSynced[field.key]"
                                             />
                                         </template>
                                     </div>
@@ -848,23 +857,46 @@ const dialogCommandOpen = ref(false);
                                 <IconRotateCcw class="size-4" />
                                 {{ $t('Reset') }}
                             </button>
-                            <button
-                                v-if="canSave"
-                                data-testid="theme-panel-save"
-                                class="border-border hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                                @click="save"
-                            >
-                                <IconSave class="size-4" />
-                                {{ $t('Save') }}
-                            </button>
-                            <button
-                                data-testid="theme-panel-save-as"
-                                class="border-border hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                                @click="dialogSaveOpen = true"
-                            >
-                                <IconSave class="size-4" />
-                                {{ $t('Save as') }}
-                            </button>
+                            <!-- Split button: custom theme → Save + dropdown; built-in → Save as new theme only -->
+                            <template v-if="allowEditing">
+                                <div v-if="currentTheme?.editable" class="border-border flex flex-1 overflow-hidden rounded-lg border">
+                                    <button
+                                        data-testid="theme-panel-save"
+                                        class="hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 items-center justify-center gap-2 px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                        @click="save"
+                                    >
+                                        <IconSave class="size-4" />
+                                        {{ $t('Save') }}
+                                    </button>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger as-child>
+                                            <button
+                                                data-testid="theme-panel-save-dropdown"
+                                                class="hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring border-border border-l px-2 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                            >
+                                                <IconChevronDown class="size-3.5" />
+                                            </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem
+                                                data-testid="theme-panel-save-as"
+                                                @click="dialogSaveOpen = true"
+                                            >
+                                                {{ $t('Save as new theme') }}
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                                <button
+                                    v-else
+                                    data-testid="theme-panel-save-as"
+                                    class="border-border hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                    @click="dialogSaveOpen = true"
+                                >
+                                    <IconSave class="size-4" />
+                                    {{ $t('Save as new theme') }}
+                                </button>
+                            </template>
                             <Tooltip>
                                 <TooltipTrigger as-child>
                                     <button

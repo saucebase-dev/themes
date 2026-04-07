@@ -24,6 +24,9 @@ type BaseThemeField = {
   label: string;
   vars: string[];
   group?: FieldGroup;
+  /** Unit fields that legitimately vary per mode (e.g. shadow-opacity).
+   *  When true, toJson() writes them to light/dark instead of the theme section. */
+  perMode?: boolean;
   binding?: {
     [key: string]: (value: unknown) => void;
   };

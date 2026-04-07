@@ -104,6 +104,34 @@ export function applyThemeVars(theme: Theme | null, isDark: boolean): void {
             applyFontClass(key, name);
         }
     });
+
+    // Compute and apply shadow strings on every theme load / mode switch.
+    const shadowColor = modeVars['--shadow-color'] ?? lightVars['--shadow-color'];
+    if (shadowColor) {
+        const opacity = parseFloat((modeVars['--shadow-opacity'] ?? lightVars['--shadow-opacity']) ?? '0.2');
+        const blur    = parseFloat(lightVars['--shadow-blur']    ?? '30');
+        const spread  = parseFloat(lightVars['--shadow-spread']  ?? '-10');
+        const offsetX = parseFloat(lightVars['--shadow-offset-x'] ?? '0');
+        const offsetY = parseFloat(lightVars['--shadow-offset-y'] ?? '1');
+        for (const [key, val] of Object.entries(computeShadows(shadowColor, opacity, blur, spread, offsetX, offsetY))) {
+            setProperty(key, val);
+        }
+    }
+
+    // Compute and apply radius + tracking scales so derived vars are always in sync.
+    const radiusValue = lightVars['--radius'];
+    if (radiusValue) {
+        for (const [key, val] of Object.entries(computeRadiusScale(radiusValue))) {
+            setProperty(key, val);
+        }
+    }
+
+    const trackingValue = lightVars['--tracking-normal'];
+    if (trackingValue) {
+        for (const [key, val] of Object.entries(computeTrackingScale(parseFloat(trackingValue)))) {
+            setProperty(key, val);
+        }
+    }
 }
 
 export function applyFieldToDom(field: FieldState, value: string): void {
@@ -158,6 +186,39 @@ export function computeShadows(
         '--shadow-lg': `${l1(1)}, ${l2(4, 6)}`,
         '--shadow-xl': `${l1(1)}, ${l2(8, 10)}`,
         '--shadow-2xl': l1(2.5),
+    };
+}
+
+/**
+ * Compute the full radius scale from a single base radius value.
+ * Uses linear px offsets: sm=-4, md=-2, lg=0, xl=+4, 2xl=+8, 3xl=+16, 4xl=+24.
+ * Returns calc() strings so rem units are preserved (e.g. "calc(0.875rem + 4px)").
+ */
+export function computeRadiusScale(radiusValue: string): Record<string, string> {
+    const steps: [string, number][] = [
+        ['--radius-sm', -4], ['--radius-md', -2], ['--radius-lg', 0],
+        ['--radius-xl', 4],  ['--radius-2xl', 8], ['--radius-3xl', 16], ['--radius-4xl', 24],
+    ];
+    return Object.fromEntries(
+        steps.map(([key, px]) =>
+            px === 0
+                ? [key, radiusValue]
+                : [key, `calc(${radiusValue} ${px > 0 ? '+' : '-'} ${Math.abs(px)}px)`],
+        ),
+    );
+}
+
+/**
+ * Compute the full tracking (letter-spacing) scale from a base value in em.
+ */
+export function computeTrackingScale(base: number): Record<string, string> {
+    return {
+        '--tracking-tighter': `${(base - 0.05).toFixed(3)}em`,
+        '--tracking-tight':   `${(base - 0.025).toFixed(3)}em`,
+        '--tracking-normal':  `${base}em`,
+        '--tracking-wide':    `${(base + 0.025).toFixed(3)}em`,
+        '--tracking-wider':   `${(base + 0.05).toFixed(3)}em`,
+        '--tracking-widest':  `${(base + 0.1).toFixed(3)}em`,
     };
 }
 

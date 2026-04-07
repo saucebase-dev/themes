@@ -6,8 +6,7 @@ import {
     InputGroupInput,
 } from '@/components/ui/input-group';
 import ColorPickerPopover from './ColorPickerPopover.vue';
-import TailwindColorPicker from './TailwindColorPicker.vue';
-import IconTailwind from '~icons/mdi/tailwind';
+import SyncToggle from './LinkToggle.vue';
 
 const props = defineProps<{
     label: string;
@@ -16,44 +15,51 @@ const props = defineProps<{
 }>();
 
 const model = defineModel<string>({ default: '' });
+const synced = defineModel<boolean>('synced', { default: false });
 
 function onInputChange(e: Event) {
     const val = (e.target as HTMLInputElement).value.trim();
-    if (!val) { return; }
+    if (!val) return;
     model.value = val;
 }
 </script>
 
 <template>
-    <InputGroup class="rounded-full">
+    <InputGroup class="rounded-full border-border">
         <!-- Left: color swatch + label -->
-        <InputGroupAddon align="inline-start" >
+        <InputGroupAddon align="inline-start">
             <ColorPickerPopover v-model="model">
-                <InputGroupButton size="icon-xs" :aria-label="$t(`Open ${props.label} color picker`)">
+                <InputGroupButton
+                    size="icon-xs"
+                    :aria-label="$t(`Open ${props.label} color picker`)"
+                >
                     <span
-                        class="size-6 rounded-full border border-border/50 shadow-sm cursor-pointer"
+                        class="border-border/50 size-6 cursor-pointer rounded-full border shadow-sm"
                         :style="`background: linear-gradient(${model}, ${model}), repeating-conic-gradient(#aaa 0% 25%, white 0% 50%) 0 0 / 8px 8px`"
                     />
                 </InputGroupButton>
             </ColorPickerPopover>
-            <span class="text-[11px] -m-1 text-muted-foreground border-r pr-4 py-2 min-w-28">{{ props.label }}</span>
+            <span class="text-muted-foreground mr-1 min-w-20 border-r py-2 pr-4 text-[11px]">
+                {{ props.label }}
+            </span>
         </InputGroupAddon>
 
         <!-- Hex / display value -->
         <InputGroupInput
             :model-value="props.displayText ?? model"
             :data-testid="props.testId"
-            class="font-mono"
+            :name="props.testId"
+            class="font-mono text-sm"
             @change="onInputChange"
         />
 
-        <!-- Right: Tailwind color picker -->
-        <InputGroupAddon align="inline-end">
-            <TailwindColorPicker v-model="model" :display-text="props.displayText">
-                <InputGroupButton size="icon-xs" :aria-label="$t(`Pick ${props.label} color from Tailwind palette`)">
-                    <IconTailwind class="text-sky-400" />
-                </InputGroupButton>
-            </TailwindColorPicker>
+        <!-- Right: sync toggle -->
+        <InputGroupAddon align="inline-end" class="relative pl-3">
+            <SyncToggle
+                v-model="synced"
+                :tooltip="$t('Link across light/dark modes')"
+                :tooltip-active="$t('Synced across modes — click to unlink')"
+            />
         </InputGroupAddon>
     </InputGroup>
 </template>

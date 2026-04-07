@@ -113,7 +113,7 @@ test.describe('Theme panel', () => {
 
     test('slider input updates CSS custom property live', async ({ page }) => {
         await page.getByTestId('theme-panel-trigger').click();
-        await page.getByTestId('group-sizing').click();
+        await page.getByTestId('group-shape').click();
 
         const radiusInput = page.getByTestId('slider-input-radius');
         await radiusInput.fill('0.5');
@@ -125,6 +125,7 @@ test.describe('Theme panel', () => {
 
     test('font picker updates CSS custom property live', async ({ page }) => {
         await page.getByTestId('theme-panel-trigger').click();
+        await page.getByTestId('group-typography').click();
 
         await page.getByTestId('font-picker-font-sans').click();
         await page.getByTestId('font-option-inter').click();
@@ -167,7 +168,7 @@ test.describe('Theme panel', () => {
 
     test('radius input value persists after switching dark mode and back', async ({ page }) => {
         await page.getByTestId('theme-panel-trigger').click();
-        await page.getByTestId('group-sizing').click();
+        await page.getByTestId('group-shape').click();
 
         const radiusInput = page.getByTestId('slider-input-radius');
         await radiusInput.fill('0.25');

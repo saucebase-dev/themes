@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import SearchInput from './SearchInput.vue';
 import type { Font } from '../types';
+import SearchInput from './SearchInput.vue';
 
 const props = defineProps<{
     fonts: Font[];
@@ -22,18 +26,27 @@ const allFonts = computed<Font[]>(() => {
     if (!model.value || props.fonts.some((f) => f.family === model.value)) {
         return props.fonts;
     }
-    return [{ family: model.value, category: 'system', variants: [] }, ...props.fonts];
+    return [
+        { family: model.value, category: 'system', variants: [] },
+        ...props.fonts,
+    ];
 });
 
-const currentFont = computed(() => allFonts.value.find((f) => f.family === model.value) ?? null);
-const currentLabel = computed(() => currentFont.value?.family ?? model.value ?? trans('Default'));
-const currentFontFamily = computed(() =>
-    model.value ? `"${model.value}", sans-serif` : 'inherit',
+const currentFont = computed(
+    () => allFonts.value.find((f) => f.family === model.value) ?? null,
+);
+const currentLabel = computed(
+    () => currentFont.value?.family ?? model.value ?? trans('Default'),
+);
+const currentFontCategory = computed(() =>
+    currentFont.value ? `font-${currentFont.value?.category}` : '',
 );
 
 const filtered = computed(() => {
     const q = search.value.toLowerCase().trim();
-    if (!q) { return allFonts.value; }
+    if (!q) {
+        return allFonts.value;
+    }
     return allFonts.value.filter((f) => f.family.toLowerCase().includes(q));
 });
 
@@ -48,17 +61,19 @@ function select(font: Font) {
         <PopoverTrigger as-child>
             <button
                 :data-testid="props.testId"
-                class="flex w-full items-center gap-3 rounded-lg border border-border bg-input hover:bg-input/70 hover:text-input px-3 py-2.5 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                class="border-border bg-input hover:bg-input/70 hover:text-input focus-visible:ring-ring flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-sm shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                :class="currentFontCategory"
             >
                 <span
-                    class="flex size-7 shrink-0 items-center justify-center rounded-md bg-background text-xs font-semibold text-foreground shadow-sm "
-                    :style="{ fontFamily: currentFontFamily }"
+                    class="bg-background text-foreground flex size-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold shadow-sm"
                 >
                     Aa
                 </span>
-                <span class="flex-1 text-left font-medium text-foreground">{{ currentLabel }}</span>
+                <span class="text-foreground flex-1 text-left font-medium">{{
+                    currentLabel
+                }}</span>
                 <svg
-                    class="size-4 shrink-0 text-muted-foreground transition-transform duration-200"
+                    class="text-muted-foreground size-4 shrink-0 transition-transform duration-200"
                     :class="{ 'rotate-180': isOpen }"
                     viewBox="0 0 24 24"
                     fill="none"
@@ -78,10 +93,14 @@ function select(font: Font) {
             :side-offset="4"
             align="start"
             :style="{ width: 'var(--reka-popper-anchor-width)' }"
+            :class="currentFontCategory"
         >
             <!-- Search -->
-            <div class="border-b border-border px-3 py-2">
-                <SearchInput v-model="search" :placeholder="$t('Search fonts...')" />
+            <div class="border-border border-b px-3 py-2">
+                <SearchInput
+                    v-model="search"
+                    :placeholder="$t('Search fonts...')"
+                />
             </div>
 
             <!-- Font list -->
@@ -91,26 +110,31 @@ function select(font: Font) {
                         v-for="font in filtered"
                         :key="font.family"
                         :data-testid="`font-option-${font.family.toLowerCase().replace(/\s+/g, '-')}`"
-                        class="flex w-full items-center gap-3 rounded-md px-2 py-1 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        class="hover:bg-accent focus-visible:ring-ring flex w-full items-center gap-3 rounded-md px-2 py-1 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
                         :class="{ 'bg-accent/50': font.family === model }"
                         @click="select(font)"
                     >
                         <span
-                            class="flex size-7 shrink-0 items-center justify-center rounded-md bg-background text-xs font-semibold text-foreground shadow-sm"
+                            class="bg-background text-foreground flex size-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold shadow-sm"
                         >
                             Aa
                         </span>
                         <div class="flex-1 overflow-hidden">
-                            <p class="truncate text-sm font-medium text-foreground">
+                            <p
+                                class="text-foreground truncate text-sm font-medium"
+                            >
                                 {{ font.family }}
                             </p>
-                            <p class="text-xs text-muted-foreground">
-                                {{ font.category }}<template v-if="font.variable"> · Variable</template>
+                            <p class="text-muted-foreground text-xs">
+                                {{ font.category
+                                }}<template v-if="font.variable">
+                                    · Variable</template
+                                >
                             </p>
                         </div>
                         <svg
                             v-if="font.family === model"
-                            class="size-4 shrink-0 text-muted-foreground"
+                            class="text-muted-foreground size-4 shrink-0"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -123,11 +147,25 @@ function select(font: Font) {
                     </button>
 
                     <!-- Empty state -->
-                    <div v-if="filtered.length === 0" class="flex flex-col items-center gap-2 py-10 text-center">
-                        <svg class="size-8 text-muted-foreground/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                    <div
+                        v-if="filtered.length === 0"
+                        class="flex flex-col items-center gap-2 py-10 text-center"
+                    >
+                        <svg
+                            class="text-muted-foreground/40 size-8"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="m21 21-4.35-4.35" />
                         </svg>
-                        <p class="text-sm text-muted-foreground">{{ $t('No fonts found') }}</p>
+                        <p class="text-muted-foreground text-sm">
+                            {{ $t('No fonts found') }}
+                        </p>
                     </div>
                 </div>
             </ScrollArea>
