@@ -208,7 +208,8 @@ function updateFromPointer(e: MouseEvent | TouchEvent) {
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     saturation.value = clamp((clientX - rect.left) / rect.width, 0, 1) * 100;
-    brightness.value = (1 - clamp((clientY - rect.top) / rect.height, 0, 1)) * 100;
+    brightness.value =
+        (1 - clamp((clientY - rect.top) / rect.height, 0, 1)) * 100;
     model.value = currentHex.value;
 }
 
@@ -232,7 +233,9 @@ function startDrag(e: MouseEvent | TouchEvent) {
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchmove', onMove as EventListener, { passive: false });
+    window.addEventListener('touchmove', onMove as EventListener, {
+        passive: false,
+    });
     window.addEventListener('touchend', onUp);
     cleanupDrag = onUp;
 }
@@ -248,16 +251,22 @@ function onHueInput(e: Event) {
 }
 
 const hasEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window;
+const isEyeDropperOpen = ref(false);
 
 async function pickFromScreen() {
     try {
+        isEyeDropperOpen.value = true;
+
         // @ts-expect-error — EyeDropper is not yet in TS DOM lib
         const dropper = new window.EyeDropper();
+
         const { sRGBHex } = await dropper.open();
         initFromHex(sRGBHex);
         model.value = sRGBHex;
     } catch {
         // cancelled
+    } finally {
+        isEyeDropperOpen.value = false;
     }
 }
 
@@ -273,7 +282,10 @@ function onRgbChange(channel: 'r' | 'g' | 'b', val: number | undefined) {
 }
 
 function onHexChange(e: Event) {
-    const val = (e.target as HTMLInputElement).value.replace(/[^0-9a-fA-F]/g, '');
+    const val = (e.target as HTMLInputElement).value.replace(
+        /[^0-9a-fA-F]/g,
+        '',
+    );
     hexInput.value = val.toUpperCase();
     if (val.length === 6) {
         initFromHex('#' + val);
@@ -292,14 +304,21 @@ function selectTailwind(hex: string) {
         <PopoverTrigger as-child>
             <slot />
         </PopoverTrigger>
-        <PopoverContent class="w-85 overflow-hidden p-0" :side-offset="6" align="start">
+        <PopoverContent
+            class="w-85 overflow-hidden p-0"
+            :side-offset="6"
+            :class="{'opacity-0': isEyeDropperOpen}"
+            align="start"
+        >
             <!-- Tab bar -->
             <div class="border-border flex border-b">
                 <button
                     class="flex flex-1 items-center justify-center gap-1.5 px-3 py-3 text-xs font-medium transition-colors"
-                    :class="activeTab === 'custom'
-                        ? 'text-foreground border-b-2 border-primary -mb-px'
-                        : 'text-muted-foreground hover:text-foreground'"
+                    :class="
+                        activeTab === 'custom'
+                            ? 'text-foreground bg-muted -mb-px border-r'
+                            : 'text-muted-foreground hover:text-foreground opacity-50'
+                    "
                     @click="activeTab = 'custom'"
                 >
                     <IconPalette class="size-5" />
@@ -307,9 +326,11 @@ function selectTailwind(hex: string) {
                 </button>
                 <button
                     class="flex flex-1 items-center justify-center gap-1.5 px-3 py-3 text-xs font-medium transition-colors"
-                    :class="activeTab === 'tailwind'
-                        ? 'text-foreground border-b-2 border-primary -mb-px'
-                        : 'text-muted-foreground hover:text-foreground'"
+                    :class="
+                        activeTab === 'tailwind'
+                            ? 'text-foreground bg-muted -mb-px border-l'
+                            : 'text-muted-foreground hover:text-foreground opacity-50'
+                    "
                     @click="activeTab = 'tailwind'"
                 >
                     <IconTailwind class="size-5 text-sky-400" />
@@ -322,18 +343,30 @@ function selectTailwind(hex: string) {
                 <!-- Gradient picker area -->
                 <div
                     ref="gradientRef"
-                    class="relative h-36 w-full cursor-crosshair select-none"
+                    class="relative h-40 w-full cursor-crosshair select-none"
                     :style="{ background: hueHsl }"
                     @mousedown="startDrag"
                     @touchstart.prevent="startDrag"
                 >
                     <div
                         class="pointer-events-none absolute inset-0"
-                        style="background: linear-gradient(to right, white, transparent);"
+                        style="
+                            background: linear-gradient(
+                                to right,
+                                white,
+                                transparent
+                            );
+                        "
                     />
                     <div
                         class="pointer-events-none absolute inset-0"
-                        style="background: linear-gradient(to bottom, transparent, black);"
+                        style="
+                            background: linear-gradient(
+                                to bottom,
+                                transparent,
+                                black
+                            );
+                        "
                     />
                     <div
                         class="pointer-events-none absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-sm ring-1 ring-black/30"
@@ -371,7 +404,11 @@ function selectTailwind(hex: string) {
                     </div>
 
                     <div v-if="mode === 'rgb'" class="flex items-end gap-1.5">
-                        <div v-for="ch in ['r', 'g', 'b'] as const" :key="ch" class="min-w-0 flex-1">
+                        <div
+                            v-for="ch in ['r', 'g', 'b'] as const"
+                            :key="ch"
+                            class="min-w-0 flex-1"
+                        >
                             <NumberField
                                 :model-value="currentRgb[ch]"
                                 :min="0"
@@ -381,11 +418,15 @@ function selectTailwind(hex: string) {
                             >
                                 <NumberFieldContent>
                                     <NumberFieldDecrement />
-                                    <NumberFieldInput class="dark:bg-input/30 focus-visible:ring-ring/50 focus-visible:ring-[3px]" />
+                                    <NumberFieldInput
+                                        class="dark:bg-input/30 focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                                    />
                                     <NumberFieldIncrement />
                                 </NumberFieldContent>
                             </NumberField>
-                            <p class="text-muted-foreground mt-1 text-center text-[10px] tracking-widest uppercase">
+                            <p
+                                class="text-muted-foreground mt-1 text-center text-[10px] tracking-widest uppercase"
+                            >
                                 {{ ch }}
                             </p>
                         </div>
@@ -400,8 +441,13 @@ function selectTailwind(hex: string) {
 
                     <div v-else class="flex items-end gap-1.5">
                         <div class="min-w-0 flex-1">
-                            <div class="border-input bg-background focus-within:border-ring focus-within:ring-ring/50 dark:bg-input/30 flex overflow-hidden rounded-md border shadow-xs transition-[color,box-shadow] focus-within:ring-[3px]">
-                                <span class="text-muted-foreground flex items-center pl-3 text-sm">#</span>
+                            <div
+                                class="border-input bg-background focus-within:border-ring focus-within:ring-ring/50 dark:bg-input/30 flex overflow-hidden rounded-md border shadow-xs transition-[color,box-shadow] focus-within:ring-[3px]"
+                            >
+                                <span
+                                    class="text-muted-foreground flex items-center pl-3 text-sm"
+                                    >#</span
+                                >
                                 <Input
                                     type="text"
                                     maxlength="6"
@@ -410,7 +456,11 @@ function selectTailwind(hex: string) {
                                     @input="onHexChange"
                                 />
                             </div>
-                            <p class="text-muted-foreground mt-1 text-center text-[10px] tracking-widest uppercase">Hex</p>
+                            <p
+                                class="text-muted-foreground mt-1 text-center text-[10px] tracking-widest uppercase"
+                            >
+                                Hex
+                            </p>
                         </div>
                         <button
                             class="border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground mb-5 shrink-0 rounded-md border p-1.5 transition-colors"
