@@ -39,6 +39,7 @@ import { useDialog } from '@/composables/useDialog';
 import { useHttp, usePage } from '@inertiajs/vue3';
 import { useDark } from '@vueuse/core';
 import { trans } from 'laravel-vue-i18n';
+import { toast } from 'vue-sonner';
 import ColorInput from './ColorInput.vue';
 import DialogCommand from './DialogCommand.vue';
 import DialogSave from './DialogSave.vue';
@@ -309,18 +310,22 @@ watch(isDark, (dark) => {
     applyShadowVars();
 });
 
-// Populate field values from the active theme whenever it changes.
-// Also triggers a full re-apply so the DOM is in sync after a theme switch.
+// Populate field values when the selected theme ID changes.
+// Watching the ID (a primitive) instead of the full object prevents Inertia
+// prop refreshes from triggering a repopulate — which would wipe unsaved edits.
 watch(
-    currentTheme,
-    (theme) => {
+    () => currentTheme.value?.id,
+    (id, prevId) => {
+        const theme = currentTheme.value;
         if (!theme) {
             return;
         }
-        // Clear per-mode edit caches so stale edits from the previous theme
-        // don't bleed into the newly selected one.
-        modeColorEdits.light = {};
-        modeColorEdits.dark = {};
+        // Clear per-mode edit caches only when actually switching themes,
+        // not on initial load (prevId === undefined handled by immediate: true).
+        if (prevId !== undefined) {
+            modeColorEdits.light = {};
+            modeColorEdits.dark = {};
+        }
         applyThemeVars(theme, isDark.value);
         populateFieldsFromTheme(theme);
     },
@@ -452,7 +457,17 @@ async function save(): Promise<void> {
     http.description = payload.description;
     http.cssVars = payload.cssVars;
 
-    await http.put(route('themes.update', { name: theme.id }));
+    await http.put(route('themes.update', { name: theme.id }), {
+        onSuccess() {
+            originalValues.value = Object.fromEntries(
+                fields.map((f) => [f.key, f.value]),
+            );
+            toast.success(trans('Theme updated successfully'));
+        },
+        onError() {
+            toast.error(trans('Failed to update theme'));
+        },
+    });
 }
 
 // ── Save as JSON ──────────────────────────────────────────────────────────────

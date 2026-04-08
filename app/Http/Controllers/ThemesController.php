@@ -39,7 +39,16 @@ class ThemesController extends Controller
 
     public function update(Request $request, string $name): JsonResponse
     {
-        $request->validate([
+        $nameValidator = Validator::make(
+            ['name' => $name],
+            ['name' => ['required', 'string', 'regex:/^[a-z0-9-]+$/']]
+        );
+
+        if ($nameValidator->fails()) {
+            return response()->json(['errors' => $nameValidator->errors()], 422);
+        }
+
+        $validated = $request->validate([
             'name' => ['required', 'string', 'regex:/^[a-z0-9-]+$/'],
             'title' => ['required', 'string', 'max:50'],
             'description' => ['nullable', 'string', 'max:255'],
@@ -55,7 +64,7 @@ class ThemesController extends Controller
             return response()->json(['errors' => ['name' => __('Theme not found or is not editable.')]], 404);
         }
 
-        file_put_contents($path, json_encode($request->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        file_put_contents($path, json_encode($validated, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         return response()->json(['success' => true]);
     }
