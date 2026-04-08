@@ -16,6 +16,7 @@
             "font-sans": "Noto Sans JP, sans-serif",
             "font-serif": "Noto Serif JP, serif",
             "font-mono": "Source Code Pro, monospace",
+            "font-body": "var(--font-sans)",
             "spacing": "0.275rem",
             "tracking-normal": "0.02em",
             "radius": "0rem",

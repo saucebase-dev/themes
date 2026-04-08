@@ -18,7 +18,6 @@ A developer-facing visual theming system for Saucebase. Lets the SaaS owner desi
 - Google Fonts — loaded on-demand via `<link>` injection; font classes injected per-var
 - Theme picker with animated ripple transition between themes
 - Theme persistence via `localStorage` key `sb-theme-theme`
-- Save custom themes (when `THEMES_ALLOW_EDITING=true`) — stored in `storage/app/themes/`
 - Save button is a **dropdown**: "Save" (update existing custom theme) / "Save as new theme" (create new)
 
 ---
@@ -29,7 +28,6 @@ A developer-facing visual theming system for Saucebase. Lets the SaaS owner desi
 |-----|-----|
 | SaaS developer/owner | Design in ThemePanel → export JSON → `saucebase:theme:apply` → rebuild |
 | End users | **Not intended** — ThemePanel is a developer tool |
-| Admins | Can access ThemePanel if `THEMES_ALLOW_EDITING=true` |
 
 Theme selection is **global** (one theme for all users). Per-user or per-tenant theming is out of scope.
 
@@ -212,13 +210,11 @@ When a synced field is edited in one mode, the value is mirrored to `modeSyncCac
 
 ```env
 THEMES_ENABLED=true          # Show/hide the entire ThemePanel UI
-THEMES_ALLOW_EDITING=true    # Allow saving custom themes via ThemePanel
 ```
 
 ```php
 // config/config.php
 'enabled'       => env('THEMES_ENABLED', true),
-'allow_editing' => env('THEMES_ALLOW_EDITING', true),
 ```
 
 ---

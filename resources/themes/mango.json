@@ -16,6 +16,7 @@
             "font-sans": "Nunito, sans-serif",
             "font-serif": "Lora, serif",
             "font-mono": "JetBrains Mono, monospace",
+            "font-body": "var(--font-sans)",
             "spacing": "0.265rem",
             "tracking-normal": "0em",
             "radius": "1.25rem",

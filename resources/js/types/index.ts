@@ -17,6 +17,7 @@ type ThemeFieldConfig = {
   font: Font;
   // Using object here to allow for future extensibility (e.g. different color formats)
   color: object;
+  select: { options: Array<{ value: string; label: string }> };
 };
 
 type BaseThemeField = {

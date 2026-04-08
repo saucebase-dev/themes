@@ -39,10 +39,6 @@ class ThemesController extends Controller
 
     public function update(Request $request, string $name): JsonResponse
     {
-        if (! config('themes.allow_editing', false)) {
-            return response()->json(['message' => 'Theme editing is disabled.'], 403);
-        }
-
         $request->validate([
             'name' => ['required', 'string', 'regex:/^[a-z0-9-]+$/'],
             'title' => ['required', 'string', 'max:50'],

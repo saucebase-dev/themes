@@ -59,6 +59,7 @@ function onInputChange(e: Event) {
                 v-model="synced"
                 :tooltip="$t('Link across light/dark modes')"
                 :tooltip-active="$t('Synced across modes — click to unlink')"
+                class="-mr-1"
             />
         </InputGroupAddon>
     </InputGroup>

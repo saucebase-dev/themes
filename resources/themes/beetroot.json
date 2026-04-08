@@ -16,6 +16,7 @@
             "font-sans": "Quicksand, sans-serif",
             "font-serif": "Playfair Display, serif",
             "font-mono": "Space Mono, monospace",
+            "font-body": "var(--font-sans)",
             "spacing": "0.25rem",
             "tracking-normal": "0em",
             "radius": "0.5rem",

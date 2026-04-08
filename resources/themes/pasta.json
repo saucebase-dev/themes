@@ -16,6 +16,7 @@
             "font-sans": "Raleway, sans-serif",
             "font-serif": "Playfair Display, serif",
             "font-mono": "Fira Code, monospace",
+            "font-body": "var(--font-sans)",
             "spacing": "0.275rem",
             "tracking-normal": "0.01em",
             "radius": "0.75rem",

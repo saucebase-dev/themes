@@ -2,14 +2,14 @@ import { trans } from 'laravel-vue-i18n';
 import type { FieldGroup, ThemeField } from './types';
 
 const BRAND_GROUP: FieldGroup = { name: trans('Brand'), syncable: true };
-const SURFACES_GROUP: FieldGroup = { name: trans('Surfaces'), collapsed: true };
-const SEMANTIC_GROUP: FieldGroup = { name: trans('Semantic'), collapsed: true };
+const SURFACES_GROUP: FieldGroup = { name: trans('Surfaces'), collapsed: true, syncable: true };
+const SEMANTIC_GROUP: FieldGroup = { name: trans('Semantic'), collapsed: true, syncable: true };
 const TYPOGRAPHY_GROUP: FieldGroup = { name: trans('Typography'), collapsed: true };
 const FOCUS_GROUP: FieldGroup = { name: trans('Borders & Focus'), collapsed: true };
-const SHAPE_GROUP: FieldGroup = { name: trans('Shape'), collapsed: true, syncable: true };
-const SHADOW_GROUP: FieldGroup = { name: trans('Shadow'), collapsed: true, syncable: true };
+const SHAPE_GROUP: FieldGroup = { name: trans('Shape'), collapsed: true};
+const SHADOW_GROUP: FieldGroup = { name: trans('Shadow'), collapsed: true };
 const SIDEBAR_GROUP: FieldGroup = { name: trans('Sidebar'), collapsed: true };
-const CHART_GROUP: FieldGroup = { name: trans('Chart'), collapsed: true };
+const CHART_GROUP: FieldGroup = { name: trans('Chart'), collapsed: true, syncable: true };
 
 export const FIELD_DEFS: ThemeField[] = [
     // ── Brand ──────────────────────────────────────────────────────────────────
@@ -124,6 +124,20 @@ export const FIELD_DEFS: ThemeField[] = [
     },
 
     // ── Typography ─────────────────────────────────────────────────────────────
+    {
+        key: 'font-body',
+        label: trans('Default Font'),
+        type: 'select',
+        vars: ['--font-body'],
+        group: TYPOGRAPHY_GROUP,
+        props: {
+            options: [
+                { value: 'var(--font-sans)', label: trans('Sans') },
+                { value: 'var(--font-serif)', label: trans('Serif') },
+                { value: 'var(--font-mono)', label: trans('Mono') },
+            ],
+        },
+    },
     {
         key: 'font-sans',
         label: trans('Sans'),

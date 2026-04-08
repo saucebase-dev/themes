@@ -23,7 +23,6 @@ class ThemesServiceProvider extends ModuleServiceProvider
     protected function shareInertiaData(): void
     {
         Inertia::share('themes', fn () => config('themes.enabled', true) ? [
-            'allow_editing' => (bool) config('themes.allow_editing', false),
             'items' => $this->discoverThemes(),
             'fonts' => [
                 'sans' => $this->loadFonts('sans'),

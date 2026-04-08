@@ -93,9 +93,7 @@ test.describe('Theme panel', () => {
         await page.getByTestId('save-theme-submit').click();
 
         await expect(page.getByTestId('theme-saved-toast')).toBeVisible();
-
-        await page.getByTestId('theme-picker-trigger').click();
-        await expect(page.getByTestId('theme-option-my-e2e-theme')).toBeVisible();
+        await expect(page.getByTestId('theme-picker-trigger')).toContainText('My E2E Theme');
     });
 
     test('color input updates CSS custom property live', async ({ page }) => {

@@ -124,51 +124,10 @@ class ThemesConfigTest extends TestCase
         );
     }
 
-    // ── themes.allow_editing ─────────────────────────────────────────────────
-
-    public function test_allow_editing_is_null_when_themes_disabled(): void
-    {
-        config(['themes.enabled' => false]);
-
-        $response = $this->get('/');
-
-        // Everything is null when disabled — themes key itself is null
-        $response->assertInertia(fn ($page) => $page->where('themes', null));
-    }
-
-    public function test_allow_editing_is_false_by_default(): void
-    {
-        config(['themes.enabled' => true, 'themes.allow_editing' => false]);
-
-        $response = $this->get('/');
-
-        $response->assertInertia(fn ($page) => $page->where('themes.allow_editing', false));
-    }
-
-    public function test_allow_editing_is_true_when_enabled(): void
-    {
-        config(['themes.enabled' => true, 'themes.allow_editing' => true]);
-
-        $response = $this->get('/');
-
-        $response->assertInertia(fn ($page) => $page->where('themes.allow_editing', true));
-    }
-
     // ── PUT /themes/{name} ────────────────────────────────────────────────────
 
-    public function test_update_returns_403_when_allow_editing_disabled(): void
+    public function test_update_overwrites_user_theme(): void
     {
-        config(['themes.allow_editing' => false]);
-        $this->createUserTheme('test-editable');
-
-        $response = $this->putJson(route('themes.update', ['name' => 'test-editable']), $this->validPayload());
-
-        $response->assertStatus(403);
-    }
-
-    public function test_update_overwrites_user_theme_when_allow_editing_enabled(): void
-    {
-        config(['themes.allow_editing' => true]);
         $this->createUserTheme('test-editable');
 
         $payload = $this->validPayload();
@@ -184,8 +143,6 @@ class ThemesConfigTest extends TestCase
 
     public function test_update_returns_404_for_non_existent_theme(): void
     {
-        config(['themes.allow_editing' => true]);
-
         $response = $this->putJson(route('themes.update', ['name' => 'test-does-not-exist']), $this->validPayload('test-does-not-exist'));
 
         $response->assertStatus(404);
@@ -193,8 +150,6 @@ class ThemesConfigTest extends TestCase
 
     public function test_bundled_theme_cannot_be_updated(): void
     {
-        config(['themes.allow_editing' => true]);
-
         // 'default' is a bundled/shipped theme — not in storage/app/themes/
         $response = $this->putJson(route('themes.update', ['name' => 'default']), [
             ...$this->validPayload(),
@@ -207,7 +162,6 @@ class ThemesConfigTest extends TestCase
 
     public function test_update_validates_required_fields(): void
     {
-        config(['themes.allow_editing' => true]);
         $this->createUserTheme('test-editable');
 
         $response = $this->putJson(route('themes.update', ['name' => 'test-editable']), [

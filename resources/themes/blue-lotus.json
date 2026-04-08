@@ -16,6 +16,7 @@
             "font-sans": "Open Sans, sans-serif",
             "font-serif": "Georgia, serif",
             "font-mono": "Menlo, monospace",
+            "font-body": "var(--font-sans)",
             "spacing": "0.25rem",
             "tracking-normal": "0em",
             "radius": "1.3rem",

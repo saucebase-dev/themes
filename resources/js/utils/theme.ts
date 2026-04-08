@@ -148,6 +148,8 @@ export function applyFieldToDom(field: FieldState, value: string): void {
             applyFontClass(v, value);
             setProperty(v, `"${value}", ${fontFallback(v)}`);
         });
+    } else if (field.type === 'select') {
+        field.vars.forEach((v) => setProperty(v, value));
     }
 }
 
