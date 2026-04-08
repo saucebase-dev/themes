@@ -92,7 +92,7 @@ const fontOptions = computed<Record<string, Font[]>>(() => ({
 const defaultThemeId = computed(() => themes.value[0]?.id ?? 'default');
 
 const selectedThemeId = ref<string>(
-    localStorage?.getItem(THEME_STORAGE_KEY) ?? defaultThemeId.value,
+    (typeof localStorage !== 'undefined' ? localStorage.getItem(THEME_STORAGE_KEY) : null) ?? defaultThemeId.value,
 );
 
 const currentTheme = computed<Theme | null>(
