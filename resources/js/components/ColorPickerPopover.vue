@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/popover';
 import { computed, onUnmounted, ref, watch } from 'vue';
 import IconChevronUpDown from '~icons/heroicons/chevron-up-down';
-import IconEyedropper from '~icons/heroicons/eye-dropper';
+import IconEyedropper from '~icons/fa-solid/eye-dropper';
 import IconPalette from '~icons/lucide/palette';
 import IconTailwind from '~icons/mdi/tailwind';
 import TailwindColorPicker from './TailwindColorPicker.vue';
