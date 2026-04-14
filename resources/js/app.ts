@@ -1,6 +1,6 @@
 import { registerGlobalComponent } from '@/lib/globalComponents';
-import ThemePanel from './components/ThemePanel.vue';
 import '../css/app.css';
+import ThemePanel from './components/ThemePanel.vue';
 
 export function setup() {
     registerGlobalComponent('top', ThemePanel);
