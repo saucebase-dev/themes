@@ -811,10 +811,10 @@ const dialogCommandOpen = ref(false);
         </Teleport>
 
         <!-- Sheet — DialogPortal inside SheetContent handles its own teleport to body -->
-        <Sheet v-model:open="sheetOpen">
+        <Sheet v-model:open="sheetOpen" :modal="false">
             <SheetContent
                 side="right"
-                class="flex flex-col gap-0 p-0 shadow-2xl sm:w-110 sm:max-w-none [&>button:last-child]:hidden"
+                class="flex flex-col gap-0 p-0 shadow-2xl sm:w-105 sm:max-w-none [&>button:last-child]:hidden"
                 overlay-class="bg-black/5 blur-sm"
             >
                 <TooltipProvider>
