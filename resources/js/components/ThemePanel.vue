@@ -60,7 +60,7 @@ import {
     setProperty,
 } from '../utils/theme';
 
-import { FIELD_DEFS } from '../fields';
+import { themeFields } from '../fields';
 
 // ── Page props ────────────────────────────────────────────────────────────────
 
@@ -172,10 +172,10 @@ async function selectTheme(id: string): Promise<void> {
 // ── Fields with values ────────────────────────────────────────────────────────
 
 const fields = reactive<FieldState[]>(
-    FIELD_DEFS.map((f) => ({ ...f, value: '' })),
+    themeFields().map((f) => ({ ...f, value: '' })),
 );
 
-const uniqueGroups = FIELD_DEFS.filter((f) => f.group)
+const uniqueGroups = themeFields().filter((f) => f.group)
     .map((f) => f.group!)
     .filter((g, i, arr) => arr.findIndex((x) => x.name === g.name) === i);
 
