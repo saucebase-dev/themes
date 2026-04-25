@@ -9,17 +9,16 @@ use Modules\Themes\Services\ThemeService;
 
 class ThemesServiceProvider extends ModuleServiceProvider
 {
-    protected string $name = 'Themes';
+    public function boot(): void
+    {
+        parent::boot();
 
-    protected string $nameLower = 'themes';
-
-    protected array $providers = [
-        RouteServiceProvider::class,
-    ];
-
-    protected array $commands = [
-        ApplyThemeCommand::class,
-    ];
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                ApplyThemeCommand::class,
+            ]);
+        }
+    }
 
     protected function shareInertiaData(): void
     {

@@ -242,7 +242,7 @@ ls modules/Themes/resources/themes/
 php -d memory_limit=2048M artisan test --compact modules/Themes/tests/
 
 # E2E
-npx playwright test --project="@Themes*"
+npx playwright test --project="@themes*"
 ```
 
 Key test files:
