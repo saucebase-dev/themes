@@ -230,14 +230,16 @@ function populateFieldsFromTheme(theme: Theme): void {
             field.value = raw;
         }
     }
-    // Apply sidebar sync now so originalValues captures the synced state,
-    // preventing a false "live edits" indicator on fresh load.
-    if (sidebarSynced.value) {
-        applySidebarSync();
-        for (const f of fields) {
-            if (f.key.startsWith('sidebar') && f.type === 'color')
-                fieldSynced[f.key] = true;
-        }
+    // Detect actual sidebar sync state from loaded values — never force-apply sync.
+    // This prevents sidebar values from being overwritten with surface values on load.
+    const allSidebarSynced = SIDEBAR_SYNC_MAP.every(([sidebarKey, sourceKey]) => {
+        const s = fields.find((f) => f.key === sidebarKey);
+        const src = fields.find((f) => f.key === sourceKey);
+        return s?.value !== '' && src?.value !== '' && s?.value === src?.value;
+    });
+    for (const f of fields) {
+        if (f.key.startsWith('sidebar') && f.type === 'color')
+            fieldSynced[f.key] = allSidebarSynced;
     }
     originalValues.value = Object.fromEntries(
         fields.map((f) => [f.key, f.value]),
@@ -649,7 +651,7 @@ const SIDEBAR_SYNC_MAP: [string, string][] = [
     ['sidebar-ring', 'ring'],
 ];
 
-const sidebarSynced = ref<boolean | null>(true);
+const sidebarSynced = ref<boolean | null>(false);
 
 function applySidebarSync(): void {
     for (const [sidebarKey, sourceKey] of SIDEBAR_SYNC_MAP) {
