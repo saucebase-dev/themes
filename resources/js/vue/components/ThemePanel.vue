@@ -37,7 +37,7 @@ import type { FieldState, Font, Theme } from '../types';
 
 import { useDialog } from '@/composables/useDialog';
 import { useHttp, usePage } from '@inertiajs/vue3';
-import { useDark } from '@vueuse/core';
+import { useColorMode } from '@vueuse/core';
 import { trans } from 'laravel-vue-i18n';
 import { toast } from 'vue-sonner';
 import ColorInput from './ColorInput.vue';
@@ -75,7 +75,8 @@ const http = useHttp({
         dark: {} as Record<string, string>,
     },
 });
-const isDark = useDark();
+const colorMode = useColorMode({ storageKey: 'appearance' });
+const isDark = computed(() => colorMode.value === 'dark');
 const { confirm } = useDialog();
 
 const themesEnabled = computed(() => page.props?.themes != null);

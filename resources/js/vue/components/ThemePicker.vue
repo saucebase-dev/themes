@@ -17,7 +17,7 @@ const props = defineProps<{
     options: Theme[];
 }>();
 
-const { system, store } = useColorMode();
+const { system, store } = useColorMode({ storageKey: 'appearance' });
 
 const colorMode = computed(() =>
     store.value === 'auto' ? system.value : store.value,
