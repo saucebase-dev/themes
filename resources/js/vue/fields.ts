@@ -2,7 +2,6 @@ import { trans } from 'laravel-vue-i18n';
 import type { FieldGroup, ThemeField } from './types';
 
 export const themeFields = (): ThemeField[] => {
-
     const BRAND_GROUP: FieldGroup = { name: trans('Brand'), syncable: true };
     const SURFACES_GROUP: FieldGroup = {
         name: trans('Surfaces'),
@@ -24,7 +23,10 @@ export const themeFields = (): ThemeField[] => {
     };
     const SHAPE_GROUP: FieldGroup = { name: trans('Shape'), collapsed: true };
     const SHADOW_GROUP: FieldGroup = { name: trans('Shadow'), collapsed: true };
-    const SIDEBAR_GROUP: FieldGroup = { name: trans('Sidebar'), collapsed: true };
+    const SIDEBAR_GROUP: FieldGroup = {
+        name: trans('Sidebar'),
+        collapsed: true,
+    };
     const CHART_GROUP: FieldGroup = {
         name: trans('Chart'),
         collapsed: true,
@@ -374,7 +376,6 @@ export const themeFields = (): ThemeField[] => {
             group: CHART_GROUP,
         },
     ];
-
 };
 
 export default themeFields;
