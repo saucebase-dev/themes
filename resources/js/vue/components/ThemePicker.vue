@@ -17,7 +17,7 @@ const props = defineProps<{
     options: Theme[];
 }>();
 
-const { system, store } = useColorMode();
+const { system, store } = useColorMode({ storageKey: 'appearance' });
 
 const colorMode = computed(() =>
     store.value === 'auto' ? system.value : store.value,
@@ -63,7 +63,7 @@ function select(id: string) {
         <PopoverTrigger as-child>
             <button
                 data-testid="theme-picker-trigger"
-                class="border-border bg-input hover:bg-input/70 hover:text-input focus-visible:ring-ring flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-sm shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                class="border-border bg-input hover:bg-input/70 hover:text-input focus-visible:ring-ring flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-sm shadow-[0_2px_8px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)] transition-colors focus-visible:ring-2 focus-visible:outline-none dark:shadow-[0_2px_8px_rgba(0,0,0,0.35),0_1px_3px_rgba(0,0,0,0.2)]"
             >
                 <ThemeColorSwatch
                     :preview="currentTheme.preview"

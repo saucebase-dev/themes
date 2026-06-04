@@ -58,7 +58,6 @@ export function applyThemeVars(theme: Theme | null, isDark: boolean): void {
         themeFieldsList.filter((f) => f.type === 'font').flatMap((f) => f.vars),
     );
 
-
     // Clear all inline CSS vars so stylesheet defaults can take over when theme is null
     const toRemove: string[] = [];
     for (let i = 0; i < el.style.length; i++) {
@@ -94,7 +93,9 @@ export function applyThemeVars(theme: Theme | null, isDark: boolean): void {
     // remain consistent regardless of which mode is active
     Object.entries(lightVars).forEach(([key, value]) => {
         const nonColorVars = new Set(
-            themeFieldsList.filter((f) => f.type !== 'color').flatMap((f) => f.vars),
+            themeFieldsList
+                .filter((f) => f.type !== 'color')
+                .flatMap((f) => f.vars),
         );
 
         if (!nonColorVars.has(key)) return;
@@ -114,8 +115,8 @@ export function applyThemeVars(theme: Theme | null, isDark: boolean): void {
     if (shadowColor) {
         const opacity = parseFloat(
             modeVars['--shadow-opacity'] ??
-            lightVars['--shadow-opacity'] ??
-            '0.2',
+                lightVars['--shadow-opacity'] ??
+                '0.2',
         );
         const blur = parseFloat(lightVars['--shadow-blur'] ?? '30');
         const spread = parseFloat(lightVars['--shadow-spread'] ?? '-10');
@@ -236,9 +237,9 @@ export function computeRadiusScale(
             px === 0
                 ? [key, radiusValue]
                 : [
-                    key,
-                    `calc(${radiusValue} ${px > 0 ? '+' : '-'} ${Math.abs(px)}px)`,
-                ],
+                      key,
+                      `calc(${radiusValue} ${px > 0 ? '+' : '-'} ${Math.abs(px)}px)`,
+                  ],
         ),
     );
 }

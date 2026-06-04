@@ -1,7 +1,9 @@
 {
     "name": "saucebase/themes",
-    "description": "",
+    "description": "Themes module",
     "type": "saucebase-module",
+    "license": "proprietary",
+    "version": "1.2.2",
     "authors": [
         {
             "name": "Saucebase",
@@ -10,20 +12,24 @@
     ],
     "extra": {
         "laravel": {
-            "providers": [],
+            "providers": [
+                "Modules\\Themes\\Providers\\ThemesServiceProvider"
+            ],
             "aliases": {}
         }
     },
     "autoload": {
         "psr-4": {
-            "Modules\\Themes\\": "app/",
+            "Modules\\Themes\\": "src/",
             "Modules\\Themes\\Database\\Factories\\": "database/factories/",
-            "Modules\\Themes\\Database\\Seeders\\": "database/seeders/"
+            "Modules\\Themes\\Database\\Seeders\\": "database/seeders/",
+            "Modules\\Themes\\Tests\\Support\\": "tests/Support/"
         }
     },
     "autoload-dev": {
         "psr-4": {
             "Modules\\Themes\\Tests\\": "tests/"
         }
-    }
+    },
+    "minimum-stability": "stable"
 }

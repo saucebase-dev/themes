@@ -37,7 +37,7 @@ import type { FieldState, Font, Theme } from '../types';
 
 import { useDialog } from '@/composables/useDialog';
 import { useHttp, usePage } from '@inertiajs/vue3';
-import { useDark } from '@vueuse/core';
+import { useColorMode } from '@vueuse/core';
 import { trans } from 'laravel-vue-i18n';
 import { toast } from 'vue-sonner';
 import ColorInput from './ColorInput.vue';
@@ -75,7 +75,8 @@ const http = useHttp({
         dark: {} as Record<string, string>,
     },
 });
-const isDark = useDark();
+const colorMode = useColorMode({ storageKey: 'appearance' });
+const isDark = computed(() => colorMode.value === 'dark');
 const { confirm } = useDialog();
 
 const themesEnabled = computed(() => page.props?.themes != null);
@@ -92,7 +93,9 @@ const fontOptions = computed<Record<string, Font[]>>(() => ({
 const defaultThemeId = computed(() => themes.value[0]?.id ?? 'default');
 
 const selectedThemeId = ref<string>(
-    (typeof localStorage !== 'undefined' ? localStorage.getItem(THEME_STORAGE_KEY) : null) ?? defaultThemeId.value,
+    (typeof localStorage !== 'undefined'
+        ? localStorage.getItem(THEME_STORAGE_KEY)
+        : null) ?? defaultThemeId.value,
 );
 
 const currentTheme = computed<Theme | null>(
@@ -175,7 +178,8 @@ const fields = reactive<FieldState[]>(
     themeFields().map((f) => ({ ...f, value: '' })),
 );
 
-const uniqueGroups = themeFields().filter((f) => f.group)
+const uniqueGroups = themeFields()
+    .filter((f) => f.group)
     .map((f) => f.group!)
     .filter((g, i, arr) => arr.findIndex((x) => x.name === g.name) === i);
 
@@ -230,14 +234,20 @@ function populateFieldsFromTheme(theme: Theme): void {
             field.value = raw;
         }
     }
-    // Apply sidebar sync now so originalValues captures the synced state,
-    // preventing a false "live edits" indicator on fresh load.
-    if (sidebarSynced.value) {
-        applySidebarSync();
-        for (const f of fields) {
-            if (f.key.startsWith('sidebar') && f.type === 'color')
-                fieldSynced[f.key] = true;
-        }
+    // Detect actual sidebar sync state from loaded values — never force-apply sync.
+    // This prevents sidebar values from being overwritten with surface values on load.
+    const allSidebarSynced = SIDEBAR_SYNC_MAP.every(
+        ([sidebarKey, sourceKey]) => {
+            const s = fields.find((f) => f.key === sidebarKey);
+            const src = fields.find((f) => f.key === sourceKey);
+            return (
+                s?.value !== '' && src?.value !== '' && s?.value === src?.value
+            );
+        },
+    );
+    for (const f of fields) {
+        if (f.key.startsWith('sidebar') && f.type === 'color')
+            fieldSynced[f.key] = allSidebarSynced;
     }
     originalValues.value = Object.fromEntries(
         fields.map((f) => [f.key, f.value]),
@@ -649,7 +659,7 @@ const SIDEBAR_SYNC_MAP: [string, string][] = [
     ['sidebar-ring', 'ring'],
 ];
 
-const sidebarSynced = ref<boolean | null>(true);
+const sidebarSynced = ref<boolean | null>(false);
 
 function applySidebarSync(): void {
     for (const [sidebarKey, sourceKey] of SIDEBAR_SYNC_MAP) {
@@ -842,10 +852,14 @@ const dialogCommandOpen = ref(false);
                                 {{ $t('Add your own flavor') }}
                             </p>
                         </div>
-                        <ThemeSelector class="order-4 sm:order-3 w-full sm:w-auto" inline hide-device />
+                        <ThemeSelector
+                            class="order-4 w-full sm:order-3 sm:w-auto"
+                            inline
+                            hide-device
+                        />
                         <button
                             data-testid="theme-panel-close"
-                            class="order-3 sm:order-4 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring rounded-md p-1 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                            class="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring order-3 rounded-md p-1 transition-colors focus-visible:ring-2 focus-visible:outline-none sm:order-4"
                             :aria-label="$t('Close theme panel')"
                             @click="sheetOpen = false"
                         >
