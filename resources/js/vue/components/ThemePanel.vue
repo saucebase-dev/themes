@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import ThemeSelector from '@/components/ThemeSelector.vue';
 import { computed, reactive, ref, watch } from 'vue';
-import type { FieldState, Font, Theme } from '../types';
+import type { FieldState, Font, Theme } from '../../types';
 
 import { useDialog } from '@/composables/useDialog';
 import { useHttp, usePage } from '@inertiajs/vue3';
@@ -58,9 +58,9 @@ import {
     computeTrackingScale,
     parseFontName,
     setProperty,
-} from '../utils/theme';
+} from '../../lib/theme';
 
-import { themeFields } from '../fields';
+import { themeFields } from '../../lib/fields';
 
 // ── Page props ────────────────────────────────────────────────────────────────
 
@@ -175,10 +175,10 @@ async function selectTheme(id: string): Promise<void> {
 // ── Fields with values ────────────────────────────────────────────────────────
 
 const fields = reactive<FieldState[]>(
-    themeFields().map((f) => ({ ...f, value: '' })),
+    themeFields(trans).map((f) => ({ ...f, value: '' })),
 );
 
-const uniqueGroups = themeFields()
+const uniqueGroups = themeFields(trans)
     .filter((f) => f.group)
     .map((f) => f.group!)
     .filter((g, i, arr) => arr.findIndex((x) => x.name === g.name) === i);

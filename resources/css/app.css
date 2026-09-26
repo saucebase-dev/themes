@@ -3,3 +3,45 @@
  * Theme variables are applied at runtime from JSON via useColorTheme.ts.
  * To add a new theme: create a JSON file in resources/themes/ with light/dark variable maps.
  */
+
+/* Hue track of the colour picker, shared by the Vue and React pickers. */
+.color-picker-hue-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 12px;
+    border-radius: 9999px;
+    background: linear-gradient(
+        to right,
+        hsl(0, 100%, 50%),
+        hsl(60, 100%, 50%),
+        hsl(120, 100%, 50%),
+        hsl(180, 100%, 50%),
+        hsl(240, 100%, 50%),
+        hsl(300, 100%, 50%),
+        hsl(360, 100%, 50%)
+    );
+    cursor: pointer;
+    outline: none;
+}
+
+.color-picker-hue-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+}
+
+.color-picker-hue-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+}

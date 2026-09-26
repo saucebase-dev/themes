@@ -1,5 +1,5 @@
-import { themeFields } from '../fields';
 import type { FieldState, Theme } from '../types';
+import { themeFields } from './fields';
 
 export const THEME_STORAGE_KEY = 'sb-theme-theme';
 

@@ -6,9 +6,16 @@ A developer-facing visual theming system for Saucebase. Lets the SaaS owner desi
 
 ---
 
+## Frontend layout
+
+- `resources/js/lib/` — framework-neutral TypeScript shared by every stack (fields, theme vars, colour maths). No imports from Vue, React, Inertia, i18n or the app (`@/`, `@js/`); `themeFields(trans)` takes the translator as an argument. Keep it that way — see the themes ADR on an extractable engine.
+- `resources/js/vue/` — the Vue UI. **React is not supported yet**; the port happens after the v3 enhancement stories land.
+
+---
+
 ## Features
 
-- 15 built-in themes (food-named: beetroot, coffee, kiwi, etc.) + customisable default
+- 14 built-in themes (default + food-named: beetroot, coffee, kiwi, etc.)
 - Live visual editor (ThemePanel) — color pickers, font selectors, shadow & radius sliders
 - Dark/light mode support — each theme defines both modes
 - Cross-mode sync — per-field toggle icon button (lock/link) in each row; active = linked across modes
@@ -115,10 +122,11 @@ documentElement inline styles  ← set by applyThemeVars() when a theme is activ
 | `src/Console/Commands/ApplyThemeCommand.php` | Patches theme.css from JSON; writes `:root` and `.dark` blocks |
 | `src/Providers/ThemesServiceProvider.php` | Discovers themes, parses JSON, shares via Inertia |
 | `src/Http/Controllers/ThemesController.php` | REST API for save/update/delete of user themes |
-| `resources/js/fields.ts` | Canonical list of all editable fields with type, vars, constraints |
-| `resources/js/utils/theme.ts` | Core utilities: `applyThemeVars`, `computeShadows`, `computeRadiusScale`, `computeTrackingScale`, font loading |
-| `resources/js/components/ThemePanel.vue` | Full visual editor — field rendering, per-field mode sync, save dropdown |
-| `resources/js/components/ThemePicker.vue` | Theme switcher with ripple animation |
+| `resources/js/lib/fields.ts` | Canonical list of all editable fields with type, vars, constraints |
+| `resources/js/lib/theme.ts` | Core utilities: `applyThemeVars`, `computeShadows`, `computeRadiusScale`, `computeTrackingScale`, font loading |
+| `resources/js/lib/color.ts` | Colour conversions (hex/RGB/HSV), contrast, clamp |
+| `resources/js/vue/components/ThemePanel.vue` | Full visual editor — field rendering, per-field mode sync, save dropdown |
+| `resources/js/vue/components/ThemePicker.vue` | Theme switcher with ripple animation |
 
 ---
 
@@ -136,7 +144,7 @@ Shadows are defined by **6 component vars** and computed into **8 shadow scale s
 
 **Computed strings:** `--shadow-2xs` through `--shadow-2xl` — stored in JSON `theme` section (light values) and recomputed by JS on every theme load / mode switch.
 
-`computeShadows()` in `utils/theme.ts` generates all 8 strings using `color-mix(in srgb, <color> X%, transparent)`. Called in:
+`computeShadows()` in `lib/theme.ts` generates all 8 strings using `color-mix(in srgb, <color> X%, transparent)`. Called in:
 1. `applyThemeVars()` — on every theme load / mode switch
 2. `ThemePanel.vue` watch — on every shadow field edit (live preview)
 
@@ -146,7 +154,7 @@ Shadows are defined by **6 component vars** and computed into **8 shadow scale s
 
 Single source: `--radius` (stored in `theme` section of JSON).
 
-`computeRadiusScale()` in `utils/theme.ts` returns 7 `calc()` strings:
+`computeRadiusScale()` in `lib/theme.ts` returns 7 `calc()` strings:
 
 ```
 --radius-sm:  calc(--radius - 4px)
@@ -166,7 +174,7 @@ Computed scale is stored in the JSON `theme` section (for CLI bake) and applied 
 
 Single source: `--tracking-normal` (stored in `theme` section).
 
-`computeTrackingScale()` in `utils/theme.ts` returns 6 em-offset strings:
+`computeTrackingScale()` in `lib/theme.ts` returns 6 em-offset strings:
 
 ```
 --tracking-tighter: base - 0.050em
@@ -230,7 +238,7 @@ npm run build
 npm run dev
 
 # List available themes
-ls modules/Themes/resources/themes/
+ls modules/themes/resources/themes/
 ```
 
 ---
@@ -239,7 +247,7 @@ ls modules/Themes/resources/themes/
 
 ```bash
 # PHP tests
-php -d memory_limit=2048M artisan test --compact modules/Themes/tests/
+php -d memory_limit=2048M artisan test --compact modules/themes/tests/
 
 # E2E
 npx playwright test --project="@themes*"

@@ -2,10 +2,10 @@
 
 namespace Modules\Themes\Providers;
 
-use App\Providers\ModuleServiceProvider;
 use Inertia\Inertia;
 use Modules\Themes\Console\Commands\ApplyThemeCommand;
 use Modules\Themes\Services\ThemeService;
+use Saucebase\Core\Providers\ModuleServiceProvider;
 
 class ThemesServiceProvider extends ModuleServiceProvider
 {
