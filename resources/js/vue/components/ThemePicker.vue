@@ -7,7 +7,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useColorMode } from '@vueuse/core';
 import { computed, ref } from 'vue';
-import type { Theme } from '../types';
+import type { Theme } from '../../types';
 import SearchInput from './SearchInput.vue';
 import ThemeColorSwatch from './ThemeColorSwatch.vue';
 

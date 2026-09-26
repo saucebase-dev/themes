@@ -6,8 +6,6 @@ use Tests\TestCase;
 
 class ApplyThemeCommandTest extends TestCase
 {
-    private string $themesDir;
-
     private string $themeCssPath;
 
     private string $originalCss;
@@ -16,7 +14,6 @@ class ApplyThemeCommandTest extends TestCase
     {
         parent::setUp();
 
-        $this->themesDir = module_path('Themes', 'resources/themes');
         $this->themeCssPath = resource_path('css/theme.css');
         $this->originalCss = file_get_contents($this->themeCssPath);
     }

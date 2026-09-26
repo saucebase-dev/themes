@@ -1,7 +1,12 @@
-import { trans } from 'laravel-vue-i18n';
-import type { FieldGroup, ThemeField } from './types';
+import type { FieldGroup, ThemeField } from '../types';
 
-export const themeFields = (): ThemeField[] => {
+/**
+ * Every editable theme field. Labels go through `trans`, so each stack passes
+ * its own translator; callers that only need var names can omit it.
+ */
+export const themeFields = (
+    trans: (key: string) => string = (key) => key,
+): ThemeField[] => {
     const BRAND_GROUP: FieldGroup = { name: trans('Brand'), syncable: true };
     const SURFACES_GROUP: FieldGroup = {
         name: trans('Surfaces'),

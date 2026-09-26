@@ -18,6 +18,14 @@ import IconChevronUpDown from '~icons/heroicons/chevron-up-down';
 import IconPalette from '~icons/lucide/palette';
 import IconTailwind from '~icons/mdi/tailwind';
 import TailwindColorPicker from './TailwindColorPicker.vue';
+import {
+    clamp,
+    cssColorToHex,
+    hexToRgb,
+    hsvToRgb,
+    rgbToHex,
+    rgbToHsv,
+} from '../../lib/color';
 
 const model = defineModel<string>({ default: '' });
 
@@ -27,113 +35,6 @@ const activeTab = ref<'custom' | 'tailwind'>('custom');
 
 // ── Color conversions ─────────────────────────────────────────────────────────
 
-function hexToRgb(hex: string) {
-    const clean = hex.replace('#', '');
-    const full =
-        clean.length === 3
-            ? clean
-                  .split('')
-                  .map((c) => c + c)
-                  .join('')
-            : clean;
-    return {
-        r: parseInt(full.slice(0, 2), 16) || 0,
-        g: parseInt(full.slice(2, 4), 16) || 0,
-        b: parseInt(full.slice(4, 6), 16) || 0,
-    };
-}
-
-function rgbToHex(r: number, g: number, b: number): string {
-    return (
-        '#' +
-        [r, g, b]
-            .map((v) =>
-                Math.round(Math.min(255, Math.max(0, v)))
-                    .toString(16)
-                    .padStart(2, '0'),
-            )
-            .join('')
-    );
-}
-
-function rgbToHsv(r: number, g: number, b: number) {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const d = max - min;
-    let h = 0;
-    if (d !== 0) {
-        if (max === r) {
-            h = ((g - b) / d) % 6;
-        } else if (max === g) {
-            h = (b - r) / d + 2;
-        } else {
-            h = (r - g) / d + 4;
-        }
-        h = h * 60;
-        if (h < 0) {
-            h += 360;
-        }
-    }
-    return {
-        h: Math.round(h),
-        s: max === 0 ? 0 : (d / max) * 100,
-        v: max * 100,
-    };
-}
-
-function hsvToRgb(h: number, s: number, v: number) {
-    s /= 100;
-    v /= 100;
-    const i = Math.floor(h / 60) % 6;
-    const f = h / 60 - Math.floor(h / 60);
-    const p = v * (1 - s);
-    const q = v * (1 - f * s);
-    const t = v * (1 - (1 - f) * s);
-    let r = 0,
-        g = 0,
-        b = 0;
-    switch (i) {
-        case 0:
-            r = v;
-            g = t;
-            b = p;
-            break;
-        case 1:
-            r = q;
-            g = v;
-            b = p;
-            break;
-        case 2:
-            r = p;
-            g = v;
-            b = t;
-            break;
-        case 3:
-            r = p;
-            g = q;
-            b = v;
-            break;
-        case 4:
-            r = t;
-            g = p;
-            b = v;
-            break;
-        case 5:
-            r = v;
-            g = p;
-            b = q;
-            break;
-    }
-    return {
-        r: Math.round(r * 255),
-        g: Math.round(g * 255),
-        b: Math.round(b * 255),
-    };
-}
-
 // ── Custom picker state ───────────────────────────────────────────────────────
 
 const isOpen = ref(false);
@@ -142,19 +43,6 @@ const saturation = ref(100);
 const brightness = ref(100);
 const mode = ref<'rgb' | 'hex'>('rgb');
 const gradientRef = ref<HTMLElement | null>(null);
-
-/** Convert any valid CSS color string to #rrggbb by drawing it on a 1×1 canvas. */
-function cssColorToHex(color: string): string {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1;
-    canvas.height = 1;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return '#000000';
-    ctx.fillStyle = color;
-    ctx.fillRect(0, 0, 1, 1);
-    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-    return rgbToHex(r, g, b);
-}
 
 function initFromHex(color: string) {
     try {
@@ -197,10 +85,6 @@ watch(
     },
     { immediate: true },
 );
-
-function clamp(v: number, lo: number, hi: number) {
-    return Math.max(lo, Math.min(hi, v));
-}
 
 function updateFromPointer(e: MouseEvent | TouchEvent) {
     if (!gradientRef.value) return;
@@ -478,46 +362,3 @@ function selectTailwind(hex: string) {
         </PopoverContent>
     </Popover>
 </template>
-
-<style scoped>
-.color-picker-hue-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    height: 12px;
-    border-radius: 9999px;
-    background: linear-gradient(
-        to right,
-        hsl(0, 100%, 50%),
-        hsl(60, 100%, 50%),
-        hsl(120, 100%, 50%),
-        hsl(180, 100%, 50%),
-        hsl(240, 100%, 50%),
-        hsl(300, 100%, 50%),
-        hsl(360, 100%, 50%)
-    );
-    cursor: pointer;
-    outline: none;
-}
-
-.color-picker-hue-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: white;
-    border: 2px solid rgba(0, 0, 0, 0.2);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-    cursor: pointer;
-}
-
-.color-picker-hue-slider::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: white;
-    border: 2px solid rgba(0, 0, 0, 0.2);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-    cursor: pointer;
-}
-</style>

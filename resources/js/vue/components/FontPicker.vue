@@ -7,7 +7,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
-import type { Font } from '../types';
+import type { Font } from '../../types';
 import SearchInput from './SearchInput.vue';
 
 const props = defineProps<{

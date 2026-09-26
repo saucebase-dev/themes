@@ -1,6 +1,6 @@
 <?php
 
-use App\Facades\Navigation;
+use Saucebase\Core\Facades\Navigation;
 
 /*
 |--------------------------------------------------------------------------

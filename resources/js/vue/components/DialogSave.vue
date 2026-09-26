@@ -14,7 +14,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
-const open = defineModel({ default: false });
+const open = defineModel<boolean>({ default: false });
 
 const props = defineProps<{
     toJson: (name: string) => {
