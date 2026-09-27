@@ -3,23 +3,15 @@
 namespace Modules\Themes\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
+use Modules\Themes\Http\Requests\SaveThemeRequest;
 
 class ThemesController extends Controller
 {
-    public function store(Request $request): JsonResponse
+    public function store(SaveThemeRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'regex:/^[a-z0-9-]+$/'],
-            'title' => ['required', 'string', 'max:50'],
-            'description' => ['nullable', 'string', 'max:255'],
-            'cssVars' => ['required', 'array'],
-            'cssVars.light' => ['required', 'array'],
-            'cssVars.dark' => ['required', 'array'],
-            'cssVars.theme' => ['nullable', 'array'],
-        ]);
+        $validated = $request->validated();
 
         $dir = storage_path('app/themes');
         $path = $this->themePath($validated['name']);
@@ -37,7 +29,7 @@ class ThemesController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function update(Request $request, string $name): JsonResponse
+    public function update(SaveThemeRequest $request, string $name): JsonResponse
     {
         $nameValidator = Validator::make(
             ['name' => $name],
@@ -48,15 +40,7 @@ class ThemesController extends Controller
             return response()->json(['errors' => $nameValidator->errors()], 422);
         }
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'regex:/^[a-z0-9-]+$/'],
-            'title' => ['required', 'string', 'max:50'],
-            'description' => ['nullable', 'string', 'max:255'],
-            'cssVars' => ['required', 'array'],
-            'cssVars.light' => ['required', 'array'],
-            'cssVars.dark' => ['required', 'array'],
-            'cssVars.theme' => ['nullable', 'array'],
-        ]);
+        $validated = $request->validated();
 
         $path = $this->themePath($name);
 

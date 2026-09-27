@@ -4,6 +4,7 @@ declare module '@inertiajs/core' {
     interface PageProps {
         themes?: {
             items: Theme[];
+            canSave: boolean;
             fonts: {
                 sans: Font[];
                 serif: Font[];

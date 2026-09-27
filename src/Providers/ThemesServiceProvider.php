@@ -22,8 +22,9 @@ class ThemesServiceProvider extends ModuleServiceProvider
 
     protected function shareInertiaData(): void
     {
-        Inertia::share('themes', fn () => config('themes.enabled', true) ? [
+        Inertia::share('themes', fn () => config('themes.enabled') ? [
             'items' => ThemeService::discoverThemes(),
+            'canSave' => (bool) config('themes.writable'),
             'fonts' => [
                 'sans' => ThemeService::loadFonts('sans'),
                 'serif' => ThemeService::loadFonts('serif'),

@@ -63,14 +63,14 @@ The terminal button in the editor ("How to use this theme") shows the exact comm
 ## Configuration
 
 ```env
-THEMES_ENABLED=true
+THEMES_ENABLED=true    # show the editor
+THEMES_WRITABLE=false  # allow saving presets from it
 ```
 
-Shows or hides the editor. It is on by default. The editor is a design tool, so turn it off in production:
+Both are on in `local` and off everywhere else, so production is safe out of the box.
 
-```env
-THEMES_ENABLED=false
-```
+- **Demo:** turn on `THEMES_ENABLED` only. Visitors can try themes live; their edits stay in their own browser.
+- **Production writes:** `THEMES_WRITABLE=true` lets anyone who can see the editor save presets. Not recommended: design locally and commit the result instead.
 
 For the theme file format and how the editor works, see the [documentation](https://saucebase-dev.github.io/docs/modules/themes).
 

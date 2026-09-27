@@ -16,6 +16,7 @@ class ThemesConfigTest extends TestCase
     {
         parent::setUp();
         $this->storageDir = storage_path('app/themes');
+        config(['themes.writable' => true]);
 
         app()->bind(FrontendConfig::class, fn () => new class extends FrontendConfig
         {

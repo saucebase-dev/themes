@@ -15,6 +15,7 @@ class ThemesControllerTest extends TestCase
     {
         parent::setUp();
         $this->storageDir = storage_path('app/themes');
+        config(['themes.writable' => true]);
     }
 
     protected function tearDown(): void

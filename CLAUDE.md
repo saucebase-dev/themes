@@ -217,13 +217,11 @@ When a synced field is edited in one mode, the value is mirrored to `modeSyncCac
 ## Config
 
 ```env
-THEMES_ENABLED=true          # Show/hide the entire ThemePanel UI
+THEMES_ENABLED=   # show the ThemePanel — default: on in local only
+THEMES_WRITABLE=  # allow save/update/delete of presets — default: on in local only
 ```
 
-```php
-// config/config.php
-'enabled'       => env('THEMES_ENABLED', true),
-```
+Owners may opt in outside local (e.g. a demo shows the panel with writes off). With `writable` off the write routes return 404 and the panel hides Save (`themes.canSave`). All write routes are throttled (30/min) and `cssVars` is capped (100 keys per section, 255 chars per value).
 
 ---
 

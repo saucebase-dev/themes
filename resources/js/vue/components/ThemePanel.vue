@@ -90,6 +90,7 @@ const isDark = computed(() => colorMode.value === 'dark');
 const { confirm } = useDialog();
 
 const themesEnabled = computed(() => page.props?.themes != null);
+const canSave = computed(() => page.props?.themes?.canSave === true);
 
 const themes = computed<Theme[]>(() => page.props?.themes?.items ?? []);
 const fontOptions = computed<Record<string, Font[]>>(() => ({
@@ -877,46 +878,50 @@ const dialogCommandOpen = ref(false);
                                 {{ $t('Reset') }}
                             </button>
                             <!-- Split button: custom theme → Save + dropdown; built-in → Save as only -->
-                            <div
-                                v-if="currentTheme?.editable"
-                                class="border-border flex flex-1 overflow-hidden rounded-lg border"
-                            >
+                            <template v-if="canSave">
+                                <div
+                                    v-if="currentTheme?.editable"
+                                    class="border-border flex flex-1 overflow-hidden rounded-lg border"
+                                >
+                                    <button
+                                        data-testid="theme-panel-save"
+                                        class="hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 items-center justify-center gap-2 px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                        @click="save"
+                                    >
+                                        <IconSave class="size-4" />
+                                        {{ $t('Save') }}
+                                    </button>
+                                    <DropdownMenu :modal="false">
+                                        <DropdownMenuTrigger as-child>
+                                            <button
+                                                data-testid="theme-panel-save-dropdown"
+                                                class="hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring border-border border-l px-2 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                            >
+                                                <IconChevronDown
+                                                    class="size-3.5"
+                                                />
+                                            </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem
+                                                data-testid="theme-panel-save-as"
+                                                @click="dialogSaveOpen = true"
+                                            >
+                                                {{ $t('Save as') }}
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
                                 <button
-                                    data-testid="theme-panel-save"
-                                    class="hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 items-center justify-center gap-2 px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
-                                    @click="save"
+                                    v-else
+                                    data-testid="theme-panel-save-as"
+                                    class="border-border hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                    @click="dialogSaveOpen = true"
                                 >
                                     <IconSave class="size-4" />
-                                    {{ $t('Save') }}
+                                    {{ $t('Save as') }}
                                 </button>
-                                <DropdownMenu :modal="false">
-                                    <DropdownMenuTrigger as-child>
-                                        <button
-                                            data-testid="theme-panel-save-dropdown"
-                                            class="hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring border-border border-l px-2 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
-                                        >
-                                            <IconChevronDown class="size-3.5" />
-                                        </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem
-                                            data-testid="theme-panel-save-as"
-                                            @click="dialogSaveOpen = true"
-                                        >
-                                            {{ $t('Save as') }}
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                            <button
-                                v-else
-                                data-testid="theme-panel-save-as"
-                                class="border-border hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
-                                @click="dialogSaveOpen = true"
-                            >
-                                <IconSave class="size-4" />
-                                {{ $t('Save as') }}
-                            </button>
+                            </template>
                             <Tooltip>
                                 <TooltipTrigger as-child>
                                     <button
