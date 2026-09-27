@@ -16,6 +16,12 @@
         "Modules\\Themes\\Providers\\ThemesServiceProvider"
       ],
       "aliases": {}
+    },
+    "saucebase": {
+      "frameworks": [
+        "vue",
+        "react"
+      ]
     }
   },
   "autoload": {

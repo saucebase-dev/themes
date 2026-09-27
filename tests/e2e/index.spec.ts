@@ -3,9 +3,16 @@ import type { Page } from '@playwright/test';
 
 const THEME_STORAGE_KEY = 'sb-theme-theme';
 
+// These tests share server state: saved themes, config overrides, and the files
+// "Set as default" rewrites. One worker runs them in order so they can't collide.
+test.describe.configure({ mode: 'serial' });
+
 async function getCssVar(page: Page, varName: string): Promise<string> {
     return page.evaluate(
-        (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim(),
+        (v) =>
+            getComputedStyle(document.documentElement)
+                .getPropertyValue(v)
+                .trim(),
         varName,
     );
 }
@@ -13,17 +20,26 @@ async function getCssVar(page: Page, varName: string): Promise<string> {
 async function switchColorMode(page: Page, mode: 'dark' | 'light') {
     await page.getByTestId(`color-mode-${mode}`).click();
     if (mode === 'dark') {
-        await page.waitForFunction(() => document.documentElement.classList.contains('dark'));
+        await page.waitForFunction(() =>
+            document.documentElement.classList.contains('dark'),
+        );
     } else {
-        await page.waitForFunction(() => !document.documentElement.classList.contains('dark'));
+        await page.waitForFunction(
+            () => !document.documentElement.classList.contains('dark'),
+        );
     }
 }
 
 test.describe('Theme panel', () => {
     test.beforeEach(async ({ page, laravel }) => {
-        await laravel.callFunction('Modules\\Themes\\Tests\\Support\\ThemesTestHelper::cleanUserThemes');
+        await laravel.callFunction(
+            'Modules\\Themes\\Tests\\Support\\ThemesTestHelper::cleanUserThemes',
+        );
         await page.goto('/');
-        await page.evaluate((key) => localStorage.removeItem(key), THEME_STORAGE_KEY);
+        await page.evaluate(
+            (key) => localStorage.removeItem(key),
+            THEME_STORAGE_KEY,
+        );
         await page.reload();
     });
 
@@ -33,15 +49,22 @@ test.describe('Theme panel', () => {
 
         await page.getByTestId('theme-panel-close').click();
         await expect(page.getByTestId('theme-panel-trigger')).toBeVisible();
-        await expect(page.getByTestId('theme-picker-trigger')).not.toBeVisible();
+        await expect(
+            page.getByTestId('theme-picker-trigger'),
+        ).not.toBeVisible();
     });
 
-    test('switches theme and persists selection in localStorage', async ({ page }) => {
+    test('switches theme and persists selection in localStorage', async ({
+        page,
+    }) => {
         await page.getByTestId('theme-panel-trigger').click();
         await page.getByTestId('theme-picker-trigger').click();
         await page.getByTestId('theme-option-coffee').click();
 
-        const stored = await page.evaluate((key) => localStorage.getItem(key), THEME_STORAGE_KEY);
+        const stored = await page.evaluate(
+            (key) => localStorage.getItem(key),
+            THEME_STORAGE_KEY,
+        );
         expect(stored).toBe('coffee');
     });
 
@@ -53,7 +76,9 @@ test.describe('Theme panel', () => {
         await page.reload();
 
         await page.getByTestId('theme-panel-trigger').click();
-        await expect(page.getByTestId('theme-picker-trigger')).toContainText('Coffee');
+        await expect(page.getByTestId('theme-picker-trigger')).toContainText(
+            'Coffee',
+        );
     });
 
     test('theme search filters the list', async ({ page }) => {
@@ -66,12 +91,16 @@ test.describe('Theme panel', () => {
         await expect(page.getByTestId('theme-option-coffee')).not.toBeVisible();
     });
 
-    test('reset button is disabled on default theme with no edits', async ({ page }) => {
+    test('reset button is disabled on default theme with no edits', async ({
+        page,
+    }) => {
         await page.getByTestId('theme-panel-trigger').click();
         await expect(page.getByTestId('theme-panel-reset')).toBeDisabled();
     });
 
-    test('reset button is enabled after switching theme and resets to default', async ({ page }) => {
+    test('reset button is enabled after switching theme and resets to default', async ({
+        page,
+    }) => {
         await page.getByTestId('theme-panel-trigger').click();
         await page.getByTestId('theme-picker-trigger').click();
         await page.getByTestId('theme-option-coffee').click();
@@ -81,11 +110,16 @@ test.describe('Theme panel', () => {
         await page.getByTestId('theme-panel-reset').click();
         await page.getByTestId('confirm-dialog-confirm').click();
 
-        const stored = await page.evaluate((key) => localStorage.getItem(key), THEME_STORAGE_KEY);
+        const stored = await page.evaluate(
+            (key) => localStorage.getItem(key),
+            THEME_STORAGE_KEY,
+        );
         expect(stored).toBeNull();
     });
 
-    test('save as creates a new theme and shows success toast', async ({ page }) => {
+    test('save as creates a new theme and shows success toast', async ({
+        page,
+    }) => {
         await page.getByTestId('theme-panel-trigger').click();
         await page.getByTestId('theme-panel-save-as').click();
 
@@ -93,7 +127,9 @@ test.describe('Theme panel', () => {
         await page.getByTestId('save-theme-submit').click();
 
         await expect(page.getByTestId('theme-saved-toast')).toBeVisible();
-        await expect(page.getByTestId('theme-picker-trigger')).toContainText('My E2E Theme');
+        await expect(page.getByTestId('theme-picker-trigger')).toContainText(
+            'My E2E Theme',
+        );
     });
 
     test('color input updates CSS custom property live', async ({ page }) => {
@@ -132,7 +168,9 @@ test.describe('Theme panel', () => {
         expect(cssVar.toLowerCase()).toContain('inter');
     });
 
-    test('color input value persists after switching to dark mode and back', async ({ page }) => {
+    test('color input value persists after switching to dark mode and back', async ({
+        page,
+    }) => {
         await page.getByTestId('theme-panel-trigger').click();
 
         const colorInput = page.getByTestId('color-input-primary');
@@ -146,7 +184,9 @@ test.describe('Theme panel', () => {
         expect(cssVar).toBe('#ff0000');
     });
 
-    test('dark and light mode color edits are independent', async ({ page }) => {
+    test('dark and light mode color edits are independent', async ({
+        page,
+    }) => {
         await page.getByTestId('theme-panel-trigger').click();
 
         const colorInput = page.getByTestId('color-input-primary');
@@ -164,7 +204,9 @@ test.describe('Theme panel', () => {
         expect(await getCssVar(page, '--primary')).toBe('#0000ff');
     });
 
-    test('radius input value persists after switching dark mode and back', async ({ page }) => {
+    test('radius input value persists after switching dark mode and back', async ({
+        page,
+    }) => {
         await page.getByTestId('theme-panel-trigger').click();
         await page.getByTestId('group-shape').click();
 
@@ -183,12 +225,24 @@ test.describe('Theme panel', () => {
         await page.getByTestId('theme-panel-trigger').click();
         await page.getByTestId('group-shadow').click();
 
-        await expect(page.getByTestId('slider-input-shadow-blur')).toBeVisible();
-        await expect(page.getByTestId('slider-input-shadow-opacity')).toBeVisible();
-        await expect(page.getByTestId('slider-input-shadow-spread')).toBeVisible();
-        await expect(page.getByTestId('slider-input-shadow-offset-x')).toBeVisible();
-        await expect(page.getByTestId('slider-input-shadow-offset-y')).toBeVisible();
-        await expect(page.getByTestId('color-input-shadow-color')).toBeVisible();
+        await expect(
+            page.getByTestId('slider-input-shadow-blur'),
+        ).toBeVisible();
+        await expect(
+            page.getByTestId('slider-input-shadow-opacity'),
+        ).toBeVisible();
+        await expect(
+            page.getByTestId('slider-input-shadow-spread'),
+        ).toBeVisible();
+        await expect(
+            page.getByTestId('slider-input-shadow-offset-x'),
+        ).toBeVisible();
+        await expect(
+            page.getByTestId('slider-input-shadow-offset-y'),
+        ).toBeVisible();
+        await expect(
+            page.getByTestId('color-input-shadow-color'),
+        ).toBeVisible();
     });
 
     test('shadow blur slider recomputes --shadow-md', async ({ page }) => {
@@ -215,7 +269,9 @@ test.describe('Theme panel', () => {
         expect(shadowMd.toLowerCase()).toContain('#ff0000');
     });
 
-    test('color input hex text reflects edited value after mode round-trip', async ({ page }) => {
+    test('color input hex text reflects edited value after mode round-trip', async ({
+        page,
+    }) => {
         await page.getByTestId('theme-panel-trigger').click();
 
         const colorInput = page.getByTestId('color-input-primary');
@@ -228,23 +284,238 @@ test.describe('Theme panel', () => {
         await expect(colorInput).toHaveValue('#aabbcc');
     });
 
-    test('color mode dark button writes to appearance localStorage key, not vueuse-dark', async ({ page }) => {
+    test('color mode dark button writes to appearance localStorage key, not vueuse-dark', async ({
+        page,
+    }) => {
         await page.getByTestId('theme-panel-trigger').click();
         await switchColorMode(page, 'dark');
 
-        const stored = await page.evaluate(() => localStorage.getItem('appearance'));
+        const stored = await page.evaluate(() =>
+            localStorage.getItem('appearance'),
+        );
         expect(stored).toBe('dark');
 
-        const wrongKey = await page.evaluate(() => localStorage.getItem('vueuse-dark'));
+        const wrongKey = await page.evaluate(() =>
+            localStorage.getItem('vueuse-dark'),
+        );
         expect(wrongKey).toBeNull();
     });
 
-    test('color mode dark button sets appearance cookie for server-side persistence', async ({ page }) => {
+    test('color mode dark button sets appearance cookie for server-side persistence', async ({
+        page,
+    }) => {
         await page.getByTestId('theme-panel-trigger').click();
         await switchColorMode(page, 'dark');
 
         const cookies = await page.context().cookies();
         const appearanceCookie = cookies.find((c) => c.name === 'appearance');
         expect(appearanceCookie?.value).toBe('dark');
+    });
+});
+
+const HELPER = 'Modules\\Themes\\Tests\\Support\\ThemesTestHelper';
+
+async function openPanel(page: Page) {
+    await page.goto('/');
+    await page.evaluate(
+        (key) => localStorage.removeItem(key),
+        THEME_STORAGE_KEY,
+    );
+    await page.reload();
+    await page.getByTestId('theme-panel-trigger').click();
+}
+
+async function pickTheme(page: Page, id: string) {
+    await page.getByTestId('theme-picker-trigger').click();
+    await page.getByTestId(`theme-option-${id}`).click();
+}
+
+async function saveAs(page: Page, name: string) {
+    await page.getByTestId('theme-panel-save-as').click();
+    await page.getByTestId('save-theme-name').fill(name);
+    await page.getByTestId('save-theme-submit').click();
+    await expect(page.getByTestId('theme-saved-toast')).toBeVisible();
+}
+
+/** The Default entry's light primary, as the server shares it. */
+async function defaultPrimary(page: Page): Promise<string> {
+    return page.evaluate(
+        () =>
+            (
+                history.state.page.props.themes.items[0].light as Record<
+                    string,
+                    string
+                >
+            )['--primary'],
+    );
+}
+
+test.describe('Theme panel actions', () => {
+    test.beforeEach(async ({ laravel }) => {
+        await laravel.callFunction(`${HELPER}::cleanUserThemes`);
+    });
+
+    test.afterEach(async ({ laravel }) => {
+        await laravel.callFunction(`${HELPER}::cleanUserThemes`);
+    });
+
+    test('delete is only offered for saved themes', async ({ page }) => {
+        await openPanel(page);
+        await expect(page.getByTestId('theme-panel-delete')).not.toBeVisible();
+
+        await saveAs(page, 'E2E Delete Me');
+
+        await expect(page.getByTestId('theme-panel-delete')).toBeVisible();
+    });
+
+    test('deleting a saved theme asks first and returns to Default', async ({
+        page,
+    }) => {
+        await openPanel(page);
+        await saveAs(page, 'E2E Delete Me');
+
+        await page.getByTestId('theme-panel-delete').click();
+        await page.getByTestId('confirm-dialog-cancel').click();
+        await expect(page.getByTestId('theme-picker-trigger')).toContainText(
+            'E2E Delete Me',
+        );
+
+        await page.getByTestId('theme-panel-delete').click();
+        await page.getByTestId('confirm-dialog-confirm').click();
+
+        await expect(page.getByTestId('theme-deleted-toast')).toBeVisible();
+        await expect(page.getByTestId('theme-picker-trigger')).toContainText(
+            'Default',
+        );
+        await page.getByTestId('theme-picker-trigger').click();
+        await expect(
+            page.getByTestId('theme-option-e2e-delete-me'),
+        ).not.toBeVisible();
+    });
+
+    test('a saved theme offers Save and Save as from the save menu', async ({
+        page,
+    }) => {
+        await openPanel(page);
+        await saveAs(page, 'E2E Menu');
+
+        await page.getByTestId('theme-panel-save-dropdown').click();
+        await expect(page.getByTestId('theme-panel-save-as')).toBeVisible();
+        await page.getByTestId('theme-panel-save').click();
+
+        await expect(page.getByTestId('theme-updated-toast')).toBeVisible();
+    });
+
+    test('confirm dialogs keep the panel open', async ({ page }) => {
+        await openPanel(page);
+        await pickTheme(page, 'coffee');
+
+        await page.getByTestId('theme-panel-reset').click();
+        await page.getByTestId('confirm-dialog-cancel').click();
+
+        await expect(page.getByTestId('theme-picker-trigger')).toBeVisible();
+        await expect(page.getByTestId('theme-panel-trigger')).not.toBeVisible();
+    });
+
+    test('without writes, save and delete are hidden', async ({
+        page,
+        laravel,
+    }) => {
+        await laravel.config('themes.writable', false);
+        await openPanel(page);
+
+        await expect(page.getByTestId('theme-picker-trigger')).toBeVisible();
+        await expect(page.getByTestId('theme-panel-save-as')).not.toBeVisible();
+        await expect(
+            page.getByTestId('theme-panel-save-dropdown'),
+        ).not.toBeVisible();
+        await expect(page.getByTestId('theme-panel-delete')).not.toBeVisible();
+    });
+});
+
+test.describe('Set as default', () => {
+    test.beforeEach(async ({ laravel }) => {
+        await laravel.callFunction(`${HELPER}::snapshotDefault`);
+    });
+
+    test.afterEach(async ({ laravel }) => {
+        await laravel.callFunction(`${HELPER}::restoreDefault`);
+    });
+
+    test('makes the current theme the Default entry', async ({ page }) => {
+        await openPanel(page);
+        await pickTheme(page, 'coffee');
+        const coffeePrimary = await page.evaluate(
+            () =>
+                (
+                    history.state.page.props.themes.items as {
+                        id: string;
+                        light: Record<string, string>;
+                    }[]
+                ).find((t) => t.id === 'coffee')!.light['--primary'],
+        );
+
+        await page.getByTestId('theme-panel-apply').click();
+        await page.getByTestId('confirm-dialog-confirm').click();
+
+        await expect(page.getByTestId('theme-default-set-toast')).toBeVisible();
+        await expect(page.getByTestId('theme-picker-trigger')).toContainText(
+            'Default',
+        );
+        await expect(page.getByTestId('theme-picker-trigger')).toBeVisible();
+        expect(await defaultPrimary(page)).toBe(coffeePrimary);
+
+        await page.reload();
+        expect(await defaultPrimary(page)).toBe(coffeePrimary);
+    });
+
+    test('cancelling changes nothing', async ({ page }) => {
+        await openPanel(page);
+        const before = await defaultPrimary(page);
+        await pickTheme(page, 'coffee');
+
+        await page.getByTestId('theme-panel-apply').click();
+        await page.getByTestId('confirm-dialog-cancel').click();
+
+        await page.reload();
+        expect(await defaultPrimary(page)).toBe(before);
+    });
+});
+
+test.describe('Themes config flags', () => {
+    test.beforeEach(async ({ laravel }) => {
+        await laravel.callFunction(
+            'Modules\\Themes\\Tests\\Support\\ThemesTestHelper::cleanUserThemes',
+        );
+        await laravel.config('themes.enabled', true);
+    });
+
+    test.afterEach(async ({ laravel }) => {
+        await laravel.callFunction(
+            'Modules\\Themes\\Tests\\Support\\ThemesTestHelper::cleanUserThemes',
+        );
+        await laravel.config('themes.enabled', true);
+    });
+
+    // ── themes.enabled ────────────────────────────────────────────────────────
+
+    test('theme panel trigger is hidden when themes.enabled is false', async ({
+        page,
+        laravel,
+    }) => {
+        await laravel.config('themes.enabled', false);
+        await page.goto('/');
+
+        await expect(page.getByTestId('theme-panel-trigger')).not.toBeVisible();
+    });
+
+    test('theme panel trigger is visible when themes.enabled is true', async ({
+        page,
+        laravel,
+    }) => {
+        await laravel.config('themes.enabled', true);
+        await page.goto('/');
+
+        await expect(page.getByTestId('theme-panel-trigger')).toBeVisible();
     });
 });

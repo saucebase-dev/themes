@@ -1,67 +1,19 @@
 <script setup lang="ts">
 import { ScrollArea } from '@/components/ui/scroll-area';
-import colors from 'tailwindcss/colors';
 import { computed, ref } from 'vue';
 import IconList from '~icons/heroicons/bars-3';
 import IconSearch from '~icons/heroicons/magnifying-glass';
 import IconGrid from '~icons/heroicons/squares-2x2';
+import { swatchBackground } from '../../lib/color';
+import { filterPalette } from '../../lib/tailwind';
 import SearchInput from './SearchInput.vue';
-
-const shades = [
-    '50',
-    '100',
-    '200',
-    '300',
-    '400',
-    '500',
-    '600',
-    '700',
-    '800',
-    '900',
-    '950',
-] as const;
-const IGNORE = new Set(['current', 'inherit']);
-
-const tailwindColors = Object.entries(colors)
-    .filter(([key]) => !IGNORE.has(key))
-    .map(([key, value]) => {
-        const name = key.charAt(0).toUpperCase() + key.slice(1);
-        if (typeof value === 'string') {
-            return { key, name, colors: [{ name: key, value }] };
-        }
-        const palette = value as Record<string, string>;
-        return {
-            key,
-            name,
-            colors: shades
-                .filter((shade) => palette[shade])
-                .map((shade) => ({
-                    name: `${key}-${shade}`,
-                    value: palette[shade],
-                })),
-        };
-    })
-    .filter((fam) => fam.colors.length > 0);
 
 const emit = defineEmits<{ select: [value: string] }>();
 
 const search = ref('');
 const viewMode = ref<'list' | 'grid'>('list');
 
-const filtered = computed(() => {
-    const q = search.value.toLowerCase().trim();
-    if (!q) {
-        return tailwindColors;
-    }
-    return tailwindColors
-        .map((fam) => ({
-            ...fam,
-            colors: fam.colors.filter(
-                (c) => c.name.includes(q) || fam.name.toLowerCase().includes(q),
-            ),
-        }))
-        .filter((fam) => fam.colors.length > 0);
-});
+const filtered = computed(() => filterPalette(search.value));
 </script>
 
 <template>
@@ -118,7 +70,9 @@ const filtered = computed(() => {
                     >
                         <span
                             class="border-border/60 size-7 shrink-0 rounded-md border shadow-sm"
-                            :style="`background: linear-gradient(${color.value}, ${color.value}), repeating-conic-gradient(#aaa 0% 25%, white 0% 50%) 0 0 / 8px 8px`"
+                            :style="{
+                                background: swatchBackground(color.value),
+                            }"
                         />
                         <span class="text-foreground text-sm">
                             {{ color.name }}
@@ -137,7 +91,9 @@ const filtered = computed(() => {
                     >
                         <span
                             class="border-border/40 group-focus-visible:ring-ring block size-5 rounded border shadow-sm transition-transform group-hover:scale-110 group-focus-visible:ring-2"
-                            :style="`background: linear-gradient(${color.value}, ${color.value}), repeating-conic-gradient(#aaa 0% 25%, white 0% 50%) 0 0 / 8px 8px`"
+                            :style="{
+                                background: swatchBackground(color.value),
+                            }"
                         />
                     </button>
                 </div>

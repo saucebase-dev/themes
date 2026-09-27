@@ -49,6 +49,20 @@ export function applyFontClass(cssVar: string, font: string): void {
         : '';
 }
 
+/** The computed value of a CSS variable on <html>. */
+export function readCssVar(name: string): string {
+    if (typeof document === 'undefined') return '';
+    return getComputedStyle(document.documentElement)
+        .getPropertyValue(name)
+        .trim();
+}
+
+/** A theme swatch's inner corner radius: one step below the theme's own. */
+export function swatchRadiusSm(radius: string | undefined): string {
+    if (!radius) return 'var(--radius-sm)';
+    return `${Math.max(0, Number.parseFloat(radius) - 0.125)}rem`;
+}
+
 export function setProperty(name: string, value: string): void {
     document.documentElement.style.setProperty(name, value);
 }

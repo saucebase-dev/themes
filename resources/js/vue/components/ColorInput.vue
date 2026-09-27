@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/input-group';
 import { computed } from 'vue';
 import IconEyedropper from '~icons/fa-solid/eye-dropper';
+import { contrastingIconColor, swatchBackground } from '../../lib/color';
 import ColorPickerPopover from './ColorPickerPopover.vue';
 import SyncToggle from './LinkToggle.vue';
 
@@ -25,17 +26,7 @@ function onInputChange(e: Event) {
     model.value = val;
 }
 
-const iconColor = computed(() => {
-    if (!model.value) return '#ffffff';
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 1;
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = model.value;
-    ctx.fillRect(0, 0, 1, 1);
-    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return luminance > 0.6 ? '#000000' : '#ffffff';
-});
+const iconColor = computed(() => contrastingIconColor(model.value));
 </script>
 
 <template>
@@ -49,7 +40,7 @@ const iconColor = computed(() => {
                 >
                     <span
                         class="border-border/50 relative size-6 cursor-pointer rounded-full border"
-                        :style="`background: linear-gradient(${model}, ${model}), repeating-conic-gradient(#aaa 0% 25%, white 0% 50%) 0 0 / 8px 8px`"
+                        :style="{ background: swatchBackground(model) }"
                     >
                         <IconEyedropper
                             class="absolute inset-0 m-auto size-3 opacity-0 transition-opacity group-focus-within/input:opacity-70 group-hover/input:opacity-70"

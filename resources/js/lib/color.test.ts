@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { clamp, hexToRgb, hsvToRgb, rgbToHex, rgbToHsv } from './color';
+import {
+    clamp,
+    colorToHsv,
+    hexToRgb,
+    hsvToRgb,
+    rgbToHex,
+    rgbToHsv,
+    swatchBackground,
+} from './color';
 
 describe('hexToRgb', () => {
     it('reads six-digit hex, with or without #', () => {
@@ -57,5 +65,19 @@ describe('clamp', () => {
         expect(clamp(-1, 0, 255)).toBe(0);
         expect(clamp(300, 0, 255)).toBe(255);
         expect(clamp(42, 0, 255)).toBe(42);
+    });
+});
+
+describe('colorToHsv', () => {
+    it('reads hex colors', () => {
+        expect(colorToHsv('#ff0000')).toEqual({ h: 0, s: 100, v: 100 });
+    });
+});
+
+describe('swatchBackground', () => {
+    it('layers the color over a checkerboard, so transparency shows', () => {
+        expect(swatchBackground('#ff000080')).toBe(
+            'linear-gradient(#ff000080, #ff000080), repeating-conic-gradient(#aaa 0% 25%, white 0% 50%) 0 0 / 8px 8px',
+        );
     });
 });

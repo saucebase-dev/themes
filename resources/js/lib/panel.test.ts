@@ -148,6 +148,45 @@ describe('themeToJson', () => {
         );
     });
 
+    it('keeps edits made in the other mode', () => {
+        const { cssVars } = themeToJson({
+            fields: fieldsWith({ primary: '#222222', 'shadow-opacity': '0.4' }),
+            synced: {},
+            isDark: true,
+            base,
+            name: 'x',
+            otherModeEdits: { primary: '#111111', 'shadow-opacity': '0.1' },
+        });
+
+        expect(cssVars.dark.primary).toBe('#222222');
+        expect(cssVars.light.primary).toBe('#111111');
+        expect(cssVars.dark['shadow-opacity']).toBe('0.4');
+        expect(cssVars.light['shadow-opacity']).toBe('0.1');
+    });
+
+    it('stores dark-mode shadow strings in the dark section', () => {
+        const { cssVars } = themeToJson({
+            fields: fieldsWith({
+                'shadow-color': '#000000',
+                'shadow-opacity': '0.1',
+                'shadow-blur': '3',
+                'shadow-spread': '0',
+                'shadow-offset-y': '1',
+            }),
+            synced: {},
+            isDark: false,
+            base: {
+                light: base.light,
+                dark: { ...base.dark, '--shadow-opacity': '0.4' },
+            },
+            name: 'x',
+        });
+
+        expect(cssVars.dark['shadow-2xs']).toBe(
+            '0px 1px 3px 0px color-mix(in srgb, #ffffff 20.0%, transparent)',
+        );
+    });
+
     it('skips empty fields', () => {
         const { cssVars } = themeToJson({
             fields: fieldsWith({}),
@@ -180,6 +219,21 @@ describe('fieldValueFromTheme', () => {
         expect(
             fieldValueFromTheme(field('primary'), theme, true, noFallback),
         ).toBe('#eeeeee');
+    });
+
+    it('reads per-mode values from the current mode', () => {
+        const perMode = {
+            light: { '--shadow-opacity': '0.1' },
+            dark: { '--shadow-opacity': '0.4' },
+        };
+        expect(
+            fieldValueFromTheme(
+                field('shadow-opacity'),
+                perMode,
+                true,
+                noFallback,
+            ),
+        ).toBe('0.4');
     });
 
     it('reads non-colours from light and strips units and quotes', () => {
@@ -237,6 +291,14 @@ describe('modeEdits', () => {
         ).toEqual({
             primary: '#ff0000',
         });
+    });
+
+    it('keeps per-mode values like shadow opacity too', () => {
+        expect(
+            modeEdits(fieldsWith({ 'shadow-opacity': '0.4' }), {
+                '--shadow-opacity': '0.1',
+            }),
+        ).toEqual({ 'shadow-opacity': '0.4' });
     });
 
     it('treats a colour the theme does not define as an edit', () => {

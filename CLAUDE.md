@@ -1,40 +1,40 @@
 # Themes Module
 
-A developer-facing visual theming system for Saucebase. Lets the SaaS owner design and bake a global app theme without writing CSS manually.
+A developer-facing visual theming system for Saucebase. Lets the SaaS owner design a global app theme without writing CSS by hand.
 
-**Core flow:** Design visually in ThemePanel → export JSON → commit JSON → run `php artisan saucebase:theme:apply {theme}` → rebuild assets.
+**Core flow (local):** design in ThemePanel → **Set as default** → `resources/css/theme.css` and `resources/themes/default.json` are rewritten → commit both. The `saucebase:theme:apply {theme}` command does the same from a terminal or CI (then `npm run build`).
 
 ---
 
 ## Frontend layout
 
-- `resources/js/lib/` — framework-neutral TypeScript shared by every stack (fields, theme vars, colour maths). No imports from Vue, React, Inertia, i18n or the app (`@/`, `@js/`); `themeFields(trans)` takes the translator as an argument. Keep it that way — see the themes ADR on an extractable engine.
-- `resources/js/vue/` — the Vue UI. **React is not supported yet**; the port happens after the v3 enhancement stories land.
+- `resources/js/lib/` — framework-neutral TypeScript shared by every stack (fields, theme vars, colour maths, the Tailwind palette). Logic both stacks need goes here, not into a component — the Vue and React components stay thin. No imports from Vue, React, Inertia, i18n or the app (`@/`, `@js/`); `themeFields(trans)` takes the translator as an argument. Keep it that way — see the themes ADR on an extractable engine.
+- `resources/js/vue/` and `resources/js/react/` — the same UI per stack, with the same test ids. Change both together.
+- The React panel has no watchers: `ThemePanel.tsx` keeps a mutable model (like Vue's `reactive`) and updates the DOM in explicit functions (`setFieldValue`, `loadTheme`, the dark-mode effect), then re-renders. Dark mode is read from `<html class="dark">` (`useIsDark`), since the app's `useTheme` state is per caller. Save/Command dialogs render inside the sheet so Radix doesn't treat focus in them as "outside".
 
 ---
 
 ## Features
 
-- 14 built-in themes (default + food-named: beetroot, coffee, kiwi, etc.)
-- Live visual editor (ThemePanel) — color pickers, font selectors, shadow & radius sliders
-- Dark/light mode support — each theme defines both modes
-- Cross-mode sync — per-field toggle icon button (lock/link) in each row; active = linked across modes
-- Shadow system — 6 component vars compute 8 shadow scale strings via `computeShadows()`
-- Radius system — single `--radius` base; `computeRadiusScale()` computes 7-step scale via `calc()`
-- Tracking system — single `--tracking-normal` base; `computeTrackingScale()` computes 6-step scale
-- Google Fonts — loaded on-demand via `<link>` injection; font classes injected per-var
-- Theme picker with animated ripple transition between themes
-- Theme persistence via `localStorage` key `sb-theme-theme`
-- Save button is a **dropdown**: "Save" (update existing custom theme) / "Save as" (create new)
+- Built-in themes (`default` + food-named: beetroot, coffee, kiwi, etc.)
+- Live visual editor (ThemePanel): colour pickers, fonts, shadow & radius sliders
+- Light/dark: each theme defines both modes; per-field cross-mode sync (link toggle)
+- Shadow, radius and tracking scales computed from single base vars (see below)
+- Google Fonts loaded on demand
+- Theme picker with circle-reveal transition (app `lib/themeReveal.ts`)
+- Preview persists in `localStorage` key `sb-theme-theme` (this browser only)
+- Footer: Delete (saved presets) · Reset · **Set as default** (local only) · Save menu (Save / Save as)
+- Filament admin theme: a separate settings page (`AdminThemeSettings`), colours/font/radius for the admin panel via `ThemesPlugin`
 
 ---
 
 ## Intended Usage
 
-| Who | How |
-|-----|-----|
-| SaaS developer/owner | Design in ThemePanel → export JSON → `saucebase:theme:apply` → rebuild |
-| End users | **Not intended** — ThemePanel is a developer tool |
+| Where | What the panel can do |
+|-------|-----------------------|
+| Local | Everything: preview, save/delete presets, Set as default |
+| Demo (`THEMES_ENABLED=true`) | Preview only; edits stay in the visitor's browser |
+| Production (defaults) | Panel hidden; the app shows the committed `theme.css` |
 
 Theme selection is **global** (one theme for all users). Per-user or per-tenant theming is out of scope.
 
@@ -45,18 +45,18 @@ Theme selection is **global** (one theme for all users). Per-user or per-tenant 
 ### Data flow
 
 ```
-resources/themes/{id}.json  ←  committed source of truth
-        ↓  (ApplyThemeCommand)
-resources/css/theme.css     ←  baked-in CSS vars (:root / .dark)
-        ↓  (Vite build)
-Browser: CSS defaults
+ThemePanel "Set as default" (POST /themes/apply, local only)
+        ↓  ThemeService::applyToCss() + replaceDefault() (merges into default.json, so vars the editor doesn't manage stay)
+resources/css/theme.css        ←  baked CSS vars (:root / .dark), what everyone sees
+resources/themes/default.json  ←  the picker's "Default" entry, kept equal to theme.css
+storage/app/themes/default.json.backup ← previous default; not listed; copy back to restore
 
-ThemesServiceProvider       ←  parses JSON, merges theme+light / theme+dark
-        ↓  (Inertia prop: themes.items)
-ThemePanel (Vue)            ←  applies inline style overrides via applyThemeVars()
-        ↓  (localStorage)
-Per-page CSS var override   ←  overrides theme.css defaults in-browser
+ThemesServiceProvider  ←  discovers bundled + storage/app/themes/*.json, shares `themes` prop
+        ↓  (items, fonts, canSave, canApply)
+ThemePanel (Vue/React) ←  previews via inline CSS var overrides (applyThemeVars)
 ```
+
+`saucebase:theme:apply {id}` calls the same `ThemeService::applyToCss()` (it does not touch `default.json`).
 
 ### JSON theme structure
 
@@ -117,16 +117,25 @@ documentElement inline styles  ← set by applyThemeVars() when a theme is activ
 
 | File | Role |
 |------|------|
-| `resources/themes/*.json` | Theme definitions — committed source of truth |
-| `resources/css/theme.css` | (in `resources/css/`, not inside module) — baked CSS output |
-| `src/Console/Commands/ApplyThemeCommand.php` | Patches theme.css from JSON; writes `:root` and `.dark` blocks |
-| `src/Providers/ThemesServiceProvider.php` | Discovers themes, parses JSON, shares via Inertia |
-| `src/Http/Controllers/ThemesController.php` | REST API for save/update/delete of user themes |
-| `resources/js/lib/fields.ts` | Canonical list of all editable fields with type, vars, constraints |
-| `resources/js/lib/theme.ts` | Core utilities: `applyThemeVars`, `computeShadows`, `computeRadiusScale`, `computeTrackingScale`, font loading |
-| `resources/js/lib/color.ts` | Colour conversions (hex/RGB/HSV), contrast, clamp |
-| `resources/js/vue/components/ThemePanel.vue` | Full visual editor — field rendering, per-field mode sync, save dropdown |
-| `resources/js/vue/components/ThemePicker.vue` | Theme switcher with ripple animation |
+| `resources/themes/*.json` | Shipped themes; `default.json` mirrors theme.css |
+| `storage/app/themes/*.json` | Saved presets (editable, deletable) |
+| `resources/css/theme.css` | (app, not module) baked CSS output |
+| `src/Services/ThemeService.php` | Discovery, parsing, `applyToCss()`, `replaceDefault()` |
+| `src/Console/Commands/ApplyThemeCommand.php` | CLI wrapper around `applyToCss()` |
+| `src/Http/Controllers/ThemesController.php` | store / update / destroy presets, apply |
+| `src/Http/Requests/ApplyThemeRequest.php` | `cssVars` rules: size caps, keys `[a-z0-9-]`, values without `;{}\`, `/*` `*/`, `url(`, `image-set(` (they end up in theme.css); `SaveThemeRequest` extends it |
+| `src/Http/Middleware/EnsureThemesWritable.php` | 404 on preset writes unless `themes.writable` |
+| `src/Http/Middleware/EnsureLocalEnvironment.php` | 404 on apply outside `local` |
+| `src/Providers/ThemesServiceProvider.php` | Shares the `themes` Inertia prop |
+| `src/Filament/…`, `src/Admin/AdminTheme.php`, `src/Settings/AdminThemeSettings.php` | Filament admin theme |
+| `resources/js/lib/fields.ts` | `themeFields()`: every editable field with type, vars, constraints |
+| `resources/js/lib/theme.ts` | `applyThemeVars`, scale computations, font loading, `readCssVar`, `swatchRadiusSm` |
+| `resources/js/lib/panel.ts` | `themeToJson` (panel state → payload, incl. the other mode's cached edits and both modes' shadow scales), `isPerMode`, `modeEdits`, mode sync helpers |
+| `resources/js/lib/color.ts` | Colour conversions, `colorToHsv`, `contrastingIconColor`, `swatchBackground` |
+| `resources/js/lib/tailwind.ts` | Tailwind palette for the colour picker, `filterPalette` |
+| `resources/js/{vue,react}/components/ThemePanel.*` | The editor |
+| `resources/js/{vue,react}/components/ThemePicker.*` | Theme switcher |
+| `resources/js/{vue,react}/components/DialogSave.*` | Save as dialog (same layout as the app confirm dialog) |
 
 ---
 
@@ -136,17 +145,17 @@ Shadows are defined by **6 component vars** and computed into **8 shadow scale s
 
 **Component vars (stored in JSON):**
 - `--shadow-color` — base color (per-mode, in light/dark)
-- `--shadow-opacity` — opacity multiplier (per-mode, in light/dark; `perMode: true` in FIELD_DEFS)
+- `--shadow-opacity` — opacity multiplier (per-mode, in light/dark; `perMode: true` in `themeFields()` — loaded, cached and restored per mode like colours)
 - `--shadow-blur` — blur radius in px (mode-agnostic, in theme section)
 - `--shadow-spread` — spread in px (mode-agnostic)
 - `--shadow-offset-x` — x offset in px (mode-agnostic)
 - `--shadow-offset-y` — y offset in px (mode-agnostic)
 
-**Computed strings:** `--shadow-2xs` through `--shadow-2xl` — stored in JSON `theme` section (light values) and recomputed by JS on every theme load / mode switch.
+**Computed strings:** `--shadow-2xs` through `--shadow-2xl` — stored per mode in the JSON (light scale in `theme`, dark scale in `dark`, so `theme.css` bakes both `:root` and `.dark`) and recomputed by JS on every theme load / mode switch.
 
 `computeShadows()` in `lib/theme.ts` generates all 8 strings using `color-mix(in srgb, <color> X%, transparent)`. Called in:
 1. `applyThemeVars()` — on every theme load / mode switch
-2. `ThemePanel.vue` watch — on every shadow field edit (live preview)
+2. ThemePanel — on every shadow field edit (live preview)
 
 ---
 
@@ -189,20 +198,20 @@ Single source: `--tracking-normal` (stored in `theme` section).
 
 ## Field System (`fields.ts`)
 
-All editable theme properties are defined in `FIELD_DEFS`. Each field has:
+All editable theme properties come from `themeFields()`. Each field has:
 - `key` — matches JSON var name (without `--`)
 - `type` — `color` | `unit` | `font`
 - `vars` — CSS var names to write (always `--` prefixed)
 - `group` — UI group (Brand, Surfaces, Typography, Shape, Shadow, Sidebar, Chart)
-- `perMode` — `true` on `shadow-opacity` → `toJson()` writes it to `light`/`dark`, not `theme`
+- `perMode` — `true` on `shadow-opacity` → `themeToJson()` writes it to `light`/`dark`, not `theme`
 
-**Type behaviour in `toJson()`:**
+**Type behaviour in `themeToJson()` (`lib/panel.ts`):**
 - `color` → written to `light` + `dark`
 - `unit` (default) → written to `theme` section, mode-agnostic
 - `unit` with `perMode: true` → written to `light` + `dark` (like color)
 - `font` → written to `theme` section; triggers Google Fonts load + class injection
 
-`MANAGED_VARS_SET` (derived from `FIELD_DEFS`) is the allowlist — `applyThemeVars()` ignores any vars not in this set, including pre-computed shadow strings.
+`MANAGED_VARS_SET` (derived from `themeFields()`) is the allowlist — `applyThemeVars()` ignores any vars not in this set, including pre-computed shadow strings.
 
 ---
 
@@ -228,15 +237,9 @@ Owners may opt in outside local (e.g. a demo shows the panel with writes off). W
 ## Commands
 
 ```bash
-# Bake a theme into theme.css (primary workflow)
+# Set a theme as default from the terminal (the panel's Set as default does this locally)
 php artisan saucebase:theme:apply {theme-id}
-# Then rebuild:
-npm run build
-# or restart dev server:
-npm run dev
-
-# List available themes
-ls modules/themes/resources/themes/
+npm run build   # or keep `npm run dev` running
 ```
 
 ---
@@ -244,15 +247,16 @@ ls modules/themes/resources/themes/
 ## Testing
 
 ```bash
-# PHP tests
-php -d memory_limit=2048M artisan test --compact modules/themes/tests/
-
-# E2E
-npx playwright test --project="@themes*"
+php -d memory_limit=2048M artisan test --compact modules/themes/tests/   # PHP
+npm run test:unit                                                        # lib/ (Vitest)
+npx playwright test --project="@themes*"                                 # E2E
 ```
 
-Key test files:
-- `tests/Feature/ApplyThemeCommandTest.php` — CLI patching logic
-- `tests/Feature/ThemesControllerTest.php` — save/update/delete API
-- `tests/Unit/ParseThemeFileTest.php` — JSON parsing and merging
-- `tests/e2e/themes-config.spec.ts` — ThemePanel UI flows
+- `tests/Feature/ThemesApplyTest.php`: Set as default (local only, theme.css + default.json + backup)
+- `tests/Feature/ThemesAccessTest.php`: `enabled`/`writable` flags, throttling, payload caps
+- `tests/Feature/ThemesControllerTest.php`, `ThemesConfigTest.php`: preset CRUD, shared props
+- `tests/Feature/ApplyThemeCommandTest.php`: CSS patching via the command
+- `tests/Feature/AdminTheme*Test.php`: Filament admin theme
+- `resources/js/lib/*.test.ts`: colour maths, fields, theme vars, panel payload, Tailwind palette
+
+Tests that simulate `local` must disable `PreventRequestForgery`: Laravel only skips CSRF in `testing`.

@@ -8,13 +8,13 @@
 [![PHP](https://img.shields.io/badge/PHP-8.4+-777BB4?logo=php&logoColor=white)](https://php.net)
 
 Works with:<br/>
-[![Vue 3.5](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vue.js&logoColor=white)](https://vuejs.org)
+[![Vue 3.5](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vue.js&logoColor=white)](https://vuejs.org) [![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
 
 </div>
 
 A visual theme editor for [Saucebase](https://github.com/saucebase-dev/saucebase), a Laravel SaaS starter kit.
 
-Design your app's colours, fonts, radius and shadows in the browser, then bake the result into your CSS with one command. Nothing runs at request time once a theme is applied.
+Design your app's colours, fonts, radius and shadows in the browser, then make it your app's default with one click (or one command in CI). Nothing runs at request time once a theme is applied.
 
 **[Full documentation →](https://saucebase-dev.github.io/docs/modules/themes)**
 
@@ -31,10 +31,10 @@ Design your app's colours, fonts, radius and shadows in the browser, then bake t
 
 ## Requirements
 
-|                |                                |
-| -------------- | ------------------------------ |
-| Saucebase core | `^1.1`                         |
-| Frontend       | Vue (React support is planned) |
+|                |               |
+| -------------- | ------------- |
+| Saucebase core | `^1.1`        |
+| Frontend       | Vue or React  |
 
 ## Installation
 
@@ -47,14 +47,17 @@ Open any page and use the palette button to open the editor.
 
 ## Applying a theme
 
-The editor previews a theme in your browser only. To make it the app's theme for everyone, bake it into your CSS:
+The editor previews a theme in your browser only. To make it the app's theme for everyone, bake it into `resources/css/theme.css`:
+
+- **Locally:** click **Set as default** (the paintbrush) in the editor. It writes what you see into `theme.css` and the picker's **Default** theme, and the dev server picks it up. The replaced one is kept as `storage/app/themes/default.json.backup`; copy it back over `default.json` to restore.
+- **From the terminal or CI:**
 
 ```bash
 php artisan saucebase:theme:apply blueberry
 npm run build
 ```
 
-The terminal button in the editor ("How to use this theme") shows the exact command for the theme you are looking at. Commit the updated `resources/css/theme.css`.
+Commit the updated `resources/css/theme.css`.
 
 ## Extending
 

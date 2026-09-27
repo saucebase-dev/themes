@@ -128,6 +128,22 @@ export function contrastingIconColor(color: string): string {
     return luminance > 0.6 ? '#000000' : '#ffffff';
 }
 
+/** HSV (0–360, 0–100, 0–100) for any CSS color; white when it can't be read. */
+export function colorToHsv(color: string): { h: number; s: number; v: number } {
+    try {
+        const hex = color.startsWith('#') ? color : cssColorToHex(color);
+        const { r, g, b } = hexToRgb(hex);
+        return rgbToHsv(r, g, b);
+    } catch {
+        return { h: 0, s: 0, v: 100 };
+    }
+}
+
+/** A swatch fill: the color over a checkerboard, so transparency shows. */
+export function swatchBackground(color: string): string {
+    return `linear-gradient(${color}, ${color}), repeating-conic-gradient(#aaa 0% 25%, white 0% 50%) 0 0 / 8px 8px`;
+}
+
 export function clamp(v: number, lo: number, hi: number): number {
     return Math.max(lo, Math.min(hi, v));
 }

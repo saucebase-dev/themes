@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { swatchRadiusSm } from '../../lib/theme';
 
 interface Preview {
     background?: string;
@@ -13,11 +14,7 @@ const props = defineProps<{
     radius?: string;
 }>();
 
-const radiusSm = computed(() => {
-    if (!props.radius) return 'var(--radius-sm)';
-    const r = Number.parseFloat(props.radius);
-    return `${Math.max(0, r - 0.125)}rem`;
-});
+const radiusSm = computed(() => swatchRadiusSm(props.radius));
 </script>
 
 <template>

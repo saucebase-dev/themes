@@ -52,8 +52,8 @@ export function themeSlug(name: string): string {
 }
 
 /**
- * The value a field shows for a theme. Colours come from the current mode; everything
- * else is mode-agnostic and comes from light. `fallback` supplies the stylesheet value
+ * The value a field shows for a theme. Colours and `perMode` units come from the
+ * current mode; everything else is mode-agnostic and comes from light. `fallback` supplies the stylesheet value
  * when the theme leaves a var undefined.
  */
 export function fieldValueFromTheme(
@@ -62,7 +62,7 @@ export function fieldValueFromTheme(
     isDark: boolean,
     fallback: (cssVar: string) => string,
 ): string {
-    const source = field.type === 'color' && isDark ? theme.dark : theme.light;
+    const source = isPerMode(field) && isDark ? theme.dark : theme.light;
     const raw = source[field.vars[0]] || fallback(field.vars[0]);
 
     if (field.type === 'font') {
@@ -96,16 +96,29 @@ export function shadowArgs(
     ];
 }
 
-/** Colour edits worth keeping when leaving a mode: values that differ from the theme. */
+/** Whether a field has a separate value per light/dark mode. */
+export function isPerMode(field: FieldState): boolean {
+    return field.type === 'color' || field.perMode === true;
+}
+
+/**
+ * Per-mode edits worth keeping when leaving a mode: colours and `perMode` units whose
+ * value differs from the theme's.
+ */
 export function modeEdits(
     fields: FieldState[],
     themeVars: ThemeVars,
 ): Record<string, string> {
     const edits: Record<string, string> = {};
     for (const field of fields) {
-        if (field.type !== 'color' || field.value === '') continue;
+        if (!isPerMode(field) || field.value === '') continue;
         const themeValue = themeVars[field.vars[0]];
-        if (themeValue === undefined || field.value !== themeValue) {
+        const same =
+            field.type === 'unit'
+                ? Number.parseFloat(field.value) ===
+                  Number.parseFloat(themeValue ?? '')
+                : field.value === themeValue;
+        if (!same) {
             edits[field.key] = field.value;
         }
     }
@@ -123,9 +136,10 @@ export function sidebarInSync(fields: FieldState[]): boolean {
 
 /**
  * The editor's state as a theme file. Edited per-mode values go to the current mode
- * (or both when linked), the other mode keeps the base theme's value, mode-agnostic
- * values go to `theme` with their unit, and the computed radius, tracking and
- * light-mode shadow scales are added so the CLI can bake them without JavaScript.
+ * (or both when linked); the other mode gets `otherModeEdits` (the edits cached when
+ * leaving it), else the base theme's value. Mode-agnostic values go to `theme` with
+ * their unit, and the computed radius, tracking and per-mode shadow scales are added
+ * so the CLI can bake them without JavaScript.
  */
 export function themeToJson(input: {
     fields: FieldState[];
@@ -133,8 +147,10 @@ export function themeToJson(input: {
     isDark: boolean;
     base: { light?: ThemeVars; dark?: ThemeVars } | null;
     name: string;
+    /** Per-mode edits made in the other mode, keyed by field key (see modeEdits). */
+    otherModeEdits?: Record<string, string>;
 }): ThemePayload {
-    const { fields, synced, isDark, base, name } = input;
+    const { fields, synced, isDark, base, name, otherModeEdits = {} } = input;
     const theme: Record<string, string> = {};
     const light: Record<string, string> = {};
     const dark: Record<string, string> = {};
@@ -143,7 +159,11 @@ export function themeToJson(input: {
     const other = isDark ? light : dark;
     const otherSource = (isDark ? base?.light : base?.dark) ?? {};
 
+    const withUnit = (field: FieldState, value: string) =>
+        field.type === 'unit' ? `${value}${field.props?.unit ?? ''}` : value;
+
     const writePerMode = (field: FieldState, value: string) => {
+        const otherEdit = otherModeEdits[field.key];
         for (const cssVar of field.vars) {
             if (synced[field.key]) {
                 light[stripPrefix(cssVar)] = value;
@@ -151,7 +171,10 @@ export function themeToJson(input: {
                 continue;
             }
             current[stripPrefix(cssVar)] = value;
-            const kept = otherSource[cssVar];
+            const kept =
+                otherEdit !== undefined
+                    ? withUnit(field, otherEdit)
+                    : otherSource[cssVar];
             if (kept) other[stripPrefix(cssVar)] = kept;
         }
     };
@@ -165,7 +188,7 @@ export function themeToJson(input: {
         if (field.type === 'color') {
             writePerMode(field, field.value);
         } else if (field.type === 'unit') {
-            const value = `${field.value}${field.props?.unit ?? ''}`;
+            const value = withUnit(field, field.value);
             if (field.perMode) writePerMode(field, value);
             else writeTheme(field, value);
         } else if (field.type === 'font') {
@@ -184,23 +207,27 @@ export function themeToJson(input: {
     if (tracking)
         scales.push(computeTrackingScale(Number.parseFloat(tracking)));
 
-    const shadowColor =
-        light['shadow-color'] ?? base?.light?.['--shadow-color'];
-    if (shadowColor) {
-        scales.push(
-            computeShadows(
-                shadowColor,
-                Number.parseFloat(
-                    light['shadow-opacity'] ??
-                        base?.light?.['--shadow-opacity'] ??
-                        '0.2',
-                ),
-                Number.parseFloat(theme['shadow-blur'] ?? '30'),
-                Number.parseFloat(theme['shadow-spread'] ?? '-10'),
-                Number.parseFloat(theme['shadow-offset-x'] ?? '0'),
-                Number.parseFloat(theme['shadow-offset-y'] ?? '1'),
+    const shadowsFor = (vars: Record<string, string>, source?: ThemeVars) => {
+        const color = vars['shadow-color'] ?? source?.['--shadow-color'];
+        if (!color) return null;
+        return computeShadows(
+            color,
+            Number.parseFloat(
+                vars['shadow-opacity'] ?? source?.['--shadow-opacity'] ?? '0.2',
             ),
+            Number.parseFloat(theme['shadow-blur'] ?? '30'),
+            Number.parseFloat(theme['shadow-spread'] ?? '-10'),
+            Number.parseFloat(theme['shadow-offset-x'] ?? '0'),
+            Number.parseFloat(theme['shadow-offset-y'] ?? '1'),
         );
+    };
+    const lightShadows = shadowsFor(light, base?.light);
+    if (lightShadows) scales.push(lightShadows);
+    // theme.css keeps its own dark shadow scale in `.dark`; bake it too.
+    for (const [cssVar, value] of Object.entries(
+        shadowsFor(dark, base?.dark) ?? {},
+    )) {
+        dark[stripPrefix(cssVar)] = value;
     }
     for (const scale of scales) {
         for (const [cssVar, value] of Object.entries(scale)) {

@@ -5,6 +5,7 @@ import {
     computeTrackingScale,
     isThemeVar,
     parseFontName,
+    swatchRadiusSm,
 } from './theme';
 
 describe('parseFontName', () => {
@@ -92,5 +93,16 @@ describe('isThemeVar', () => {
         expect(isThemeVar('--theme-reveal-x')).toBe(false);
         expect(isThemeVar('--theme-reveal-radius')).toBe(false);
         expect(isThemeVar('--some-app-var')).toBe(false);
+    });
+});
+
+describe('swatchRadiusSm', () => {
+    it('is a step below the theme radius, never negative', () => {
+        expect(swatchRadiusSm('0.625rem')).toBe('0.5rem');
+        expect(swatchRadiusSm('0.1rem')).toBe('0rem');
+    });
+
+    it('falls back to the page radius when the theme has none', () => {
+        expect(swatchRadiusSm(undefined)).toBe('var(--radius-sm)');
     });
 });

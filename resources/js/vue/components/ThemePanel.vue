@@ -19,9 +19,11 @@ import {
 } from '@/components/ui/tooltip';
 
 import IconChevronDown from '~icons/lucide/chevron-down';
+import IconPaintbrush from '~icons/lucide/paintbrush';
 import IconPalette from '~icons/lucide/palette';
 import IconRotateCcw from '~icons/lucide/rotate-ccw';
 import IconSave from '~icons/lucide/save';
+import IconTrash from '~icons/lucide/trash-2';
 import IconTerminal from '~icons/lucide/terminal';
 import IconX from '~icons/lucide/x';
 
@@ -41,7 +43,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue';
 import type { FieldState, Font, Theme } from '../../types';
 
 import { useDialog } from '@/composables/useDialog';
-import { useHttp, usePage } from '@inertiajs/vue3';
+import { router, useHttp, usePage } from '@inertiajs/vue3';
 import { useColorMode } from '@vueuse/core';
 import { trans } from 'laravel-vue-i18n';
 import { toast } from 'vue-sonner';
@@ -59,12 +61,14 @@ import {
     applyThemeVars,
     clearThemeOverrides,
     computeShadows,
+    readCssVar,
     setProperty,
 } from '../../lib/theme';
 
 import { themeFields } from '../../lib/fields';
 import {
     fieldValueFromTheme,
+    isPerMode,
     modeEdits,
     shadowArgs,
     SIDEBAR_SYNC_MAP,
@@ -87,10 +91,11 @@ const http = useHttp({
 });
 const colorMode = useColorMode({ storageKey: 'appearance' });
 const isDark = computed(() => colorMode.value === 'dark');
-const { confirm } = useDialog();
+const { confirm, isOpen: isConfirming } = useDialog();
 
 const themesEnabled = computed(() => page.props?.themes != null);
 const canSave = computed(() => page.props?.themes?.canSave === true);
+const canApply = computed(() => page.props?.themes?.canApply === true);
 
 const themes = computed<Theme[]>(() => page.props?.themes?.items ?? []);
 const fontOptions = computed<Record<string, Font[]>>(() => ({
@@ -148,11 +153,12 @@ async function selectTheme(
 }
 
 /**
- * During a reveal the browser's transition layer sits above everything, so a click
- * lands on <html> and would read as a click outside the panel. Ignore those.
+ * Clicks that are not really "outside" the panel: during a reveal the transition
+ * layer sits above everything, so a click lands on <html>; and a confirm dialog
+ * opened from the panel sits outside it.
  */
 function keepOpenWhileRevealing(event: Event): void {
-    if (isRevealing()) {
+    if (isRevealing() || isConfirming.value) {
         event.preventDefault();
     }
 }
@@ -191,20 +197,13 @@ const modeColorEdits = reactive<
 // Snapshot of field values as loaded from the theme — used to detect live edits.
 const originalValues = ref<Record<string, string>>({});
 
-function getCssVar(cssVar: string): string {
-    if (typeof document === 'undefined') return '';
-    return getComputedStyle(document.documentElement)
-        .getPropertyValue(cssVar)
-        .trim();
-}
-
 function populateFieldsFromTheme(theme: Theme): void {
     for (const field of fields) {
         field.value = fieldValueFromTheme(
             field,
             theme,
             isDark.value,
-            getCssVar,
+            readCssVar,
         );
     }
     // Detect the sidebar's link state from the loaded values; never force it, or
@@ -226,11 +225,9 @@ watch(isDark, (dark) => {
     const leavingMode = dark ? 'light' : 'dark';
     const enteringMode = dark ? 'dark' : 'light';
 
-    // The theme's canonical color values for each mode.
+    // The theme's canonical values for the mode being left.
     const leavingThemeVars =
         (dark ? currentTheme.value?.light : currentTheme.value?.dark) ?? {};
-    const enteringThemeVars =
-        (dark ? currentTheme.value?.dark : currentTheme.value?.light) ?? {};
 
     // Keep only genuine edits for the leaving mode. Saving every value would pollute
     // the cache when the panel starts in dark mode (values already hold dark colours).
@@ -239,8 +236,8 @@ watch(isDark, (dark) => {
     applyThemeVars(currentTheme.value, dark);
 
     for (const field of fields) {
-        // Non-color fields are mode-agnostic — always re-apply.
-        if (field.type !== 'color' && field.value !== '') {
+        // Mode-agnostic fields — always re-apply.
+        if (!isPerMode(field) && field.value !== '') {
             applyFieldToDom(field, String(field.value));
         }
 
@@ -251,20 +248,21 @@ watch(isDark, (dark) => {
             continue;
         }
 
-        if (field.type === 'color') {
+        if (isPerMode(field)) {
             const savedEdit = modeColorEdits[enteringMode][field.key];
             if (savedEdit !== undefined) {
                 // Restore the user's live edit for this mode.
                 field.value = savedEdit;
                 applyFieldToDom(field, savedEdit);
-            } else {
-                // No user edit — sync field.value to the entering mode's theme value
-                // so the UI shows the correct mode-specific color.
-                const themeDefault = enteringThemeVars[field.vars[0]];
-                if (
-                    themeDefault !== undefined &&
-                    field.value !== themeDefault
-                ) {
+            } else if (currentTheme.value) {
+                // No user edit — show the entering mode's own value.
+                const themeDefault = fieldValueFromTheme(
+                    field,
+                    currentTheme.value,
+                    dark,
+                    readCssVar,
+                );
+                if (field.value !== themeDefault) {
                     field.value = themeDefault;
                 }
             }
@@ -404,10 +402,80 @@ async function save(): Promise<void> {
             originalValues.value = Object.fromEntries(
                 fields.map((f) => [f.key, f.value]),
             );
-            toast.success(trans('Theme updated successfully'));
+            toast.success(trans('Theme updated successfully'), {
+                testId: 'theme-updated-toast',
+            });
         },
         onError() {
             toast.error(trans('Failed to update theme'));
+        },
+    });
+}
+
+// ── Delete (saved presets only) ──────────────────────────────────────────────
+
+async function remove(): Promise<void> {
+    const theme = currentTheme.value;
+    if (!theme?.editable) return;
+
+    const ok = await confirm({
+        title: trans('Delete theme'),
+        description: trans('This saved theme will be deleted permanently.'),
+        confirmLabel: trans('Delete'),
+        cancelLabel: trans('Cancel'),
+        variant: 'destructive',
+        icon: IconTrash,
+    });
+    if (!ok) return;
+
+    await http.delete(route('themes.destroy', { name: theme.id }), {
+        onSuccess() {
+            selectTheme(defaultThemeId.value);
+            router.reload({ only: ['themes'] });
+            toast.success(trans('Theme deleted'), {
+                testId: 'theme-deleted-toast',
+            });
+        },
+        onError() {
+            toast.error(trans('Failed to delete theme'));
+        },
+    });
+}
+
+// ── Set as default (local only) ──────────────────────────────────────────────
+
+async function apply(): Promise<void> {
+    const ok = await confirm({
+        title: trans('Set as default'),
+        description: trans(
+            'Everyone will see this theme by default. Commit the change to keep it.',
+        ),
+        confirmLabel: trans('Set as default'),
+        cancelLabel: trans('Cancel'),
+        icon: IconPaintbrush,
+    });
+    if (!ok) return;
+
+    http.cssVars = toJson(currentTheme.value?.name ?? '').cssVars;
+
+    await http.post(route('themes.apply'), {
+        onSuccess() {
+            // Default now holds these values; show it as the current theme.
+            router.reload({
+                only: ['themes'],
+                onSuccess: () => {
+                    originalValues.value = Object.fromEntries(
+                        fields.map((f) => [f.key, f.value]),
+                    );
+                    selectTheme(defaultThemeId.value);
+                    toast.success(trans('Theme set as default'), {
+                        testId: 'theme-default-set-toast',
+                    });
+                },
+            });
+        },
+        onError() {
+            toast.error(trans('Failed to set theme as default'));
         },
     });
 }
@@ -421,6 +489,7 @@ function toJson(inputName: string) {
         isDark: isDark.value,
         base: currentTheme.value,
         name: inputName,
+        otherModeEdits: modeColorEdits[isDark.value ? 'light' : 'dark'],
     });
 }
 
@@ -868,6 +937,21 @@ const dialogCommandOpen = ref(false);
                     <!-- Footer -->
                     <div class="border-border bg-background/20 border-t p-3">
                         <div class="flex gap-2">
+                            <Tooltip v-if="canSave && currentTheme?.editable">
+                                <TooltipTrigger as-child>
+                                    <button
+                                        data-testid="theme-panel-delete"
+                                        :aria-label="$t('Delete theme')"
+                                        class="border-border text-destructive hover:bg-destructive/10 focus-visible:ring-ring flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                        @click="remove"
+                                    >
+                                        <IconTrash class="size-4" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    {{ $t('Delete theme') }}
+                                </TooltipContent>
+                            </Tooltip>
                             <button
                                 data-testid="theme-panel-reset"
                                 :disabled="!canReset"
@@ -877,57 +961,66 @@ const dialogCommandOpen = ref(false);
                                 <IconRotateCcw class="size-4" />
                                 {{ $t('Reset') }}
                             </button>
-                            <!-- Split button: custom theme → Save + dropdown; built-in → Save as only -->
+                            <button
+                                v-if="canApply"
+                                data-testid="theme-panel-apply"
+                                class="border-border hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                @click="apply"
+                            >
+                                <IconPaintbrush class="size-4" />
+                                {{ $t('Set as default') }}
+                            </button>
+                            <!-- Custom theme → Save / Save as menu; built-in → Save as only -->
                             <template v-if="canSave">
-                                <div
+                                <DropdownMenu
                                     v-if="currentTheme?.editable"
-                                    class="border-border flex flex-1 overflow-hidden rounded-lg border"
+                                    :modal="false"
                                 >
-                                    <button
-                                        data-testid="theme-panel-save"
-                                        class="hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 items-center justify-center gap-2 px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
-                                        @click="save"
-                                    >
-                                        <IconSave class="size-4" />
-                                        {{ $t('Save') }}
-                                    </button>
-                                    <DropdownMenu :modal="false">
-                                        <DropdownMenuTrigger as-child>
-                                            <button
-                                                data-testid="theme-panel-save-dropdown"
-                                                class="hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring border-border border-l px-2 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
-                                            >
-                                                <IconChevronDown
-                                                    class="size-3.5"
-                                                />
-                                            </button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem
-                                                data-testid="theme-panel-save-as"
-                                                @click="dialogSaveOpen = true"
-                                            >
-                                                {{ $t('Save as') }}
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                                <button
-                                    v-else
-                                    data-testid="theme-panel-save-as"
-                                    class="border-border hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
-                                    @click="dialogSaveOpen = true"
-                                >
-                                    <IconSave class="size-4" />
-                                    {{ $t('Save as') }}
-                                </button>
+                                    <DropdownMenuTrigger as-child>
+                                        <button
+                                            data-testid="theme-panel-save-dropdown"
+                                            :aria-label="$t('Save')"
+                                            class="border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                        >
+                                            <IconSave class="size-4" />
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            data-testid="theme-panel-save"
+                                            @click="save"
+                                        >
+                                            {{ $t('Save') }}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            data-testid="theme-panel-save-as"
+                                            @click="dialogSaveOpen = true"
+                                        >
+                                            {{ $t('Save as') }}
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                <Tooltip v-else>
+                                    <TooltipTrigger as-child>
+                                        <button
+                                            data-testid="theme-panel-save-as"
+                                            class="border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                            @click="dialogSaveOpen = true"
+                                        >
+                                            <IconSave class="size-4" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        {{ $t('Save as') }}
+                                    </TooltipContent>
+                                </Tooltip>
                             </template>
-                            <Tooltip>
+                            <Tooltip v-if="!canApply">
                                 <TooltipTrigger as-child>
                                     <button
                                         data-testid="theme-panel-command"
                                         :disabled="isDefault(selectedThemeId)"
-                                        class="border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex items-center justify-center rounded-lg border px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                        class="border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                         @click="dialogCommandOpen = true"
                                     >
                                         <IconTerminal class="size-4" />

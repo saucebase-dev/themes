@@ -20,8 +20,7 @@ import IconTailwind from '~icons/mdi/tailwind';
 import TailwindColorPicker from './TailwindColorPicker.vue';
 import {
     clamp,
-    cssColorToHex,
-    hexToRgb,
+    colorToHsv,
     hsvToRgb,
     rgbToHex,
     rgbToHsv,
@@ -45,18 +44,10 @@ const mode = ref<'rgb' | 'hex'>('rgb');
 const gradientRef = ref<HTMLElement | null>(null);
 
 function initFromHex(color: string) {
-    try {
-        const hex = color.startsWith('#') ? color : cssColorToHex(color);
-        const { r, g, b } = hexToRgb(hex);
-        const { h, s, v } = rgbToHsv(r, g, b);
-        hue.value = h;
-        saturation.value = s;
-        brightness.value = v;
-    } catch {
-        hue.value = 0;
-        saturation.value = 0;
-        brightness.value = 100;
-    }
+    const { h, s, v } = colorToHsv(color);
+    hue.value = h;
+    saturation.value = s;
+    brightness.value = v;
 }
 
 watch(model, (val) => {

@@ -5,7 +5,9 @@ namespace Modules\Themes\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
+use Modules\Themes\Http\Requests\ApplyThemeRequest;
 use Modules\Themes\Http\Requests\SaveThemeRequest;
+use Modules\Themes\Services\ThemeService;
 
 class ThemesController extends Controller
 {
@@ -71,6 +73,17 @@ class ThemesController extends Controller
         }
 
         unlink($path);
+
+        return response()->json(['success' => true]);
+    }
+
+    /** Make the panel's current theme the app default: theme.css plus the picker's Default entry. */
+    public function apply(ApplyThemeRequest $request): JsonResponse
+    {
+        /** @var array{theme?: array<string, string>, light: array<string, string>, dark: array<string, string>} $cssVars */
+        $cssVars = $request->validated('cssVars');
+        ThemeService::applyToCss($cssVars);
+        ThemeService::replaceDefault($cssVars);
 
         return response()->json(['success' => true]);
     }
