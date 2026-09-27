@@ -3,7 +3,18 @@ import { themeFields } from './fields';
 
 export const THEME_STORAGE_KEY = 'sb-theme-theme';
 
-function fontFallback(cssVar: string): string {
+/** Scales computed from a field rather than edited directly: --radius-xl, --shadow-md… */
+const COMPUTED_SCALE = /^--(radius|tracking|shadow)(-|$)/;
+
+let fieldVars: Set<string> | null = null;
+
+/** Whether an inline var on <html> belongs to the theme engine. */
+export function isThemeVar(name: string): boolean {
+    fieldVars ??= new Set(themeFields().flatMap((f) => f.vars));
+    return fieldVars.has(name) || COMPUTED_SCALE.test(name);
+}
+
+export function fontFallback(cssVar: string): string {
     if (cssVar.includes('mono')) return 'monospace';
     if (cssVar.includes('serif')) return 'serif';
     return 'sans-serif';
@@ -58,14 +69,8 @@ export function applyThemeVars(theme: Theme | null, isDark: boolean): void {
         themeFieldsList.filter((f) => f.type === 'font').flatMap((f) => f.vars),
     );
 
-    // Clear all inline CSS vars so stylesheet defaults can take over when theme is null
-    const toRemove: string[] = [];
-    for (let i = 0; i < el.style.length; i++) {
-        if (el.style[i].startsWith('--')) {
-            toRemove.push(el.style[i]);
-        }
-    }
-    toRemove.forEach((v) => el.style.removeProperty(v));
+    // Clear what a previous theme set, so stylesheet defaults take over when theme is null.
+    clearThemeOverrides();
 
     if (!theme) {
         return;
@@ -113,15 +118,19 @@ export function applyThemeVars(theme: Theme | null, isDark: boolean): void {
     const shadowColor =
         modeVars['--shadow-color'] ?? lightVars['--shadow-color'];
     if (shadowColor) {
-        const opacity = parseFloat(
+        const opacity = Number.parseFloat(
             modeVars['--shadow-opacity'] ??
                 lightVars['--shadow-opacity'] ??
                 '0.2',
         );
-        const blur = parseFloat(lightVars['--shadow-blur'] ?? '30');
-        const spread = parseFloat(lightVars['--shadow-spread'] ?? '-10');
-        const offsetX = parseFloat(lightVars['--shadow-offset-x'] ?? '0');
-        const offsetY = parseFloat(lightVars['--shadow-offset-y'] ?? '1');
+        const blur = Number.parseFloat(lightVars['--shadow-blur'] ?? '30');
+        const spread = Number.parseFloat(lightVars['--shadow-spread'] ?? '-10');
+        const offsetX = Number.parseFloat(
+            lightVars['--shadow-offset-x'] ?? '0',
+        );
+        const offsetY = Number.parseFloat(
+            lightVars['--shadow-offset-y'] ?? '1',
+        );
         for (const [key, val] of Object.entries(
             computeShadows(
                 shadowColor,
@@ -149,7 +158,7 @@ export function applyThemeVars(theme: Theme | null, isDark: boolean): void {
     const trackingValue = lightVars['--tracking-normal'];
     if (trackingValue) {
         for (const [key, val] of Object.entries(
-            computeTrackingScale(parseFloat(trackingValue)),
+            computeTrackingScale(Number.parseFloat(trackingValue)),
         )) {
             setProperty(key, val);
         }
@@ -258,13 +267,21 @@ export function computeTrackingScale(base: number): Record<string, string> {
     };
 }
 
+/**
+ * Remove every inline var and font class the theme engine set, and nothing else.
+ *
+ * Other code puts vars on <html> too — the light/dark switcher drives its circle reveal
+ * with `--theme-reveal-*` — and wiping those mid-animation breaks it.
+ */
 export function clearThemeOverrides(): void {
+    if (typeof document === 'undefined') return;
     const el = document.documentElement;
-    const toRemove: string[] = [];
+    const owned: string[] = [];
     for (let i = 0; i < el.style.length; i++) {
-        if (el.style[i].startsWith('--')) {
-            toRemove.push(el.style[i]);
-        }
+        if (isThemeVar(el.style[i])) owned.push(el.style[i]);
     }
-    toRemove.forEach((v) => el.style.removeProperty(v));
+    owned.forEach((v) => el.style.removeProperty(v));
+    document
+        .querySelectorAll('style[id^="sb-theme-"]')
+        .forEach((tag) => tag.remove());
 }

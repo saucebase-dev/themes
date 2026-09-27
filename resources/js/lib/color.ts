@@ -10,9 +10,9 @@ export function hexToRgb(hex: string) {
                   .join('')
             : clean;
     return {
-        r: parseInt(full.slice(0, 2), 16) || 0,
-        g: parseInt(full.slice(2, 4), 16) || 0,
-        b: parseInt(full.slice(4, 6), 16) || 0,
+        r: Number.parseInt(full.slice(0, 2), 16) || 0,
+        g: Number.parseInt(full.slice(2, 4), 16) || 0,
+        b: Number.parseInt(full.slice(4, 6), 16) || 0,
     };
 }
 

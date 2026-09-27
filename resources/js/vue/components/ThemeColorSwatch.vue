@@ -15,7 +15,7 @@ const props = defineProps<{
 
 const radiusSm = computed(() => {
     if (!props.radius) return 'var(--radius-sm)';
-    const r = parseFloat(props.radius);
+    const r = Number.parseFloat(props.radius);
     return `${Math.max(0, r - 0.125)}rem`;
 });
 </script>

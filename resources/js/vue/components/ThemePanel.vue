@@ -32,7 +32,12 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ThemeSelector from '@/components/ThemeSelector.vue';
-import { computed, reactive, ref, watch } from 'vue';
+import {
+    isRevealing,
+    revealTransition,
+    type RevealOrigin,
+} from '@js/lib/themeReveal';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
 import type { FieldState, Font, Theme } from '../../types';
 
 import { useDialog } from '@/composables/useDialog';
@@ -53,14 +58,19 @@ import {
     applyFieldToDom,
     applyThemeVars,
     clearThemeOverrides,
-    computeRadiusScale,
     computeShadows,
-    computeTrackingScale,
-    parseFontName,
     setProperty,
 } from '../../lib/theme';
 
 import { themeFields } from '../../lib/fields';
+import {
+    fieldValueFromTheme,
+    modeEdits,
+    shadowArgs,
+    SIDEBAR_SYNC_MAP,
+    sidebarInSync,
+    themeToJson,
+} from '../../lib/panel';
 
 // ── Page props ────────────────────────────────────────────────────────────────
 
@@ -118,58 +128,32 @@ function setTheme(id: string): void {
     }
 }
 
-async function selectTheme(id: string): Promise<void> {
+/** Switch themes with the same circle reveal as the light/dark switcher. */
+async function selectTheme(
+    id: string,
+    origin: RevealOrigin | null = null,
+): Promise<void> {
     if (id === selectedThemeId.value) {
         return;
     }
 
-    clearThemeOverrides();
-
-    if (
-        !document.startViewTransition ||
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    ) {
-        setTheme(id);
-        return;
-    }
-
-    const x = window.innerWidth / 2;
-    const y = window.innerHeight / 2;
-    const endRadius = Math.hypot(
-        Math.max(x, window.innerWidth - x),
-        Math.max(y, window.innerHeight - y),
-    );
-
-    const ripple = document.createElement('div');
-    ripple.style.cssText = `position:fixed;border-radius:50%;pointer-events:none;z-index:99998;left:${x}px;top:${y}px;width:0;height:0;transform:translate(-50%,-50%);background:color-mix(in oklch,var(--foreground) 25%,transparent);filter:blur(40px)`;
-    document.body.appendChild(ripple);
-    const diameter = endRadius * 2;
-    ripple.animate(
-        [
-            { width: '0', height: '0', opacity: '0.7' },
-            { width: `${diameter}px`, height: `${diameter}px`, opacity: '0' },
-        ],
-        { duration: 600, easing: 'ease-out' },
-    ).onfinish = () => ripple.remove();
-
     const target = themes.value.find((t) => t.id === id) ?? null;
-    applyThemeVars(target, document.documentElement.classList.contains('dark'));
 
-    setTheme(id);
+    await revealTransition(origin, async () => {
+        applyThemeVars(target, isDark.value);
+        setTheme(id);
+        await nextTick();
+    });
+}
 
-    document.documentElement.animate(
-        {
-            clipPath: [
-                `circle(0px at ${x}px ${y}px)`,
-                `circle(${endRadius}px at ${x}px ${y}px)`,
-            ],
-        },
-        {
-            duration: 800,
-            easing: 'ease-in-out',
-            pseudoElement: '::view-transition-new(root)',
-        },
-    );
+/**
+ * During a reveal the browser's transition layer sits above everything, so a click
+ * lands on <html> and would read as a click outside the panel. Ignore those.
+ */
+function keepOpenWhileRevealing(event: Event): void {
+    if (isRevealing()) {
+        event.preventDefault();
+    }
 }
 
 // ── Fields with values ────────────────────────────────────────────────────────
@@ -215,36 +199,16 @@ function getCssVar(cssVar: string): string {
 
 function populateFieldsFromTheme(theme: Theme): void {
     for (const field of fields) {
-        // Non-color fields (font, unit) are mode-agnostic — always read from light
-        const sourceVars =
-            field.type === 'color'
-                ? isDark.value
-                    ? theme.dark
-                    : theme.light
-                : theme.light;
-        // Fall back to the computed CSS value (stylesheet default) when the theme
-        // JSON doesn't define the var (e.g. --font-serif on the default theme).
-        const raw = sourceVars[field.vars[0]] || getCssVar(field.vars[0]);
-        if (field.type === 'font') {
-            field.value = parseFontName(raw);
-        } else if (field.type === 'unit') {
-            // SliderInput expects a plain number string — strip the CSS unit
-            field.value = String(parseFloat(raw) || 0);
-        } else {
-            field.value = raw;
-        }
+        field.value = fieldValueFromTheme(
+            field,
+            theme,
+            isDark.value,
+            getCssVar,
+        );
     }
-    // Detect actual sidebar sync state from loaded values — never force-apply sync.
-    // This prevents sidebar values from being overwritten with surface values on load.
-    const allSidebarSynced = SIDEBAR_SYNC_MAP.every(
-        ([sidebarKey, sourceKey]) => {
-            const s = fields.find((f) => f.key === sidebarKey);
-            const src = fields.find((f) => f.key === sourceKey);
-            return (
-                s?.value !== '' && src?.value !== '' && s?.value === src?.value
-            );
-        },
-    );
+    // Detect the sidebar's link state from the loaded values; never force it, or
+    // sidebar colours would be overwritten with the surface colours on load.
+    const allSidebarSynced = sidebarInSync(fields);
     for (const f of fields) {
         if (f.key.startsWith('sidebar') && f.type === 'color')
             fieldSynced[f.key] = allSidebarSynced;
@@ -267,18 +231,9 @@ watch(isDark, (dark) => {
     const enteringThemeVars =
         (dark ? currentTheme.value?.dark : currentTheme.value?.light) ?? {};
 
-    // Save only genuine user edits for the leaving mode — values that differ from
-    // the theme's canonical color. Saving all field values would pollute the cache
-    // when the component starts in dark mode (field.value already holds dark colors).
-    for (const field of fields) {
-        if (field.type !== 'color' || field.value === '') continue;
-        const themeDefault = leavingThemeVars[field.vars[0]];
-        if (themeDefault === undefined || field.value !== themeDefault) {
-            modeColorEdits[leavingMode][field.key] = field.value;
-        } else {
-            delete modeColorEdits[leavingMode][field.key];
-        }
-    }
+    // Keep only genuine edits for the leaving mode. Saving every value would pollute
+    // the cache when the panel starts in dark mode (values already hold dark colours).
+    modeColorEdits[leavingMode] = modeEdits(fields, leavingThemeVars);
 
     applyThemeVars(currentTheme.value, dark);
 
@@ -363,34 +318,10 @@ for (const field of fields) {
 // ── Shadow computed vars ──────────────────────────────────────────────────────
 
 function applyShadowVars(): void {
-    const color = fields.find((f) => f.key === 'shadow-color')?.value;
-    if (!color) return;
+    const args = shadowArgs(fields);
+    if (!args) return;
 
-    const opacity = parseFloat(
-        fields.find((f) => f.key === 'shadow-opacity')?.value ?? '0.2',
-    );
-    const blur = parseFloat(
-        fields.find((f) => f.key === 'shadow-blur')?.value ?? '30',
-    );
-    const spread = parseFloat(
-        fields.find((f) => f.key === 'shadow-spread')?.value ?? '-10',
-    );
-    const offsetX = parseFloat(
-        fields.find((f) => f.key === 'shadow-offset-x')?.value ?? '0',
-    );
-    const offsetY = parseFloat(
-        fields.find((f) => f.key === 'shadow-offset-y')?.value ?? '1',
-    );
-
-    const shadows = computeShadows(
-        color,
-        opacity,
-        blur,
-        spread,
-        offsetX,
-        offsetY,
-    );
-    for (const [key, value] of Object.entries(shadows)) {
+    for (const [key, value] of Object.entries(computeShadows(...args))) {
         setProperty(key, value);
     }
 }
@@ -483,149 +414,13 @@ async function save(): Promise<void> {
 // ── Save as JSON ──────────────────────────────────────────────────────────────
 
 function toJson(inputName: string) {
-    const theme: Record<string, string> = {};
-    const light: Record<string, string> = {};
-    const dark: Record<string, string> = {};
-
-    // Strip '--' prefix for shadcn format
-    const stripPrefix = (v: string) => (v.startsWith('--') ? v.slice(2) : v);
-
-    for (const field of fields) {
-        if (
-            field.value === '' ||
-            field.value === null ||
-            field.value === undefined
-        )
-            continue;
-
-        if (field.type === 'color') {
-            const isSynced = fieldSynced[field.key];
-            if (isSynced) {
-                // Cross-mode sync: write current value to both modes
-                for (const target of [light, dark]) {
-                    for (const v of field.vars) {
-                        target[stripPrefix(v)] = field.value;
-                    }
-                }
-            } else {
-                // Current mode: write the user's (possibly edited) value
-                const currentTarget = isDark.value ? dark : light;
-                for (const v of field.vars) {
-                    currentTarget[stripPrefix(v)] = field.value;
-                }
-
-                // Other mode: preserve the base theme's untouched value
-                const otherTarget = isDark.value ? light : dark;
-                const otherSource = isDark.value
-                    ? currentTheme.value?.light
-                    : currentTheme.value?.dark;
-                for (const v of field.vars) {
-                    const val = otherSource?.[v];
-                    if (val) otherTarget[stripPrefix(v)] = val;
-                }
-            }
-        } else if (field.type === 'unit') {
-            const unit = field.props?.unit ?? 'rem';
-            const valueWithUnit = `${field.value}${unit}`;
-            if (field.perMode) {
-                // Per-mode unit (e.g. shadow-opacity): write to light/dark like a color field
-                const isSynced = fieldSynced[field.key];
-                if (isSynced) {
-                    for (const target of [light, dark]) {
-                        for (const v of field.vars)
-                            target[stripPrefix(v)] = valueWithUnit;
-                    }
-                } else {
-                    const currentTarget = isDark.value ? dark : light;
-                    for (const v of field.vars)
-                        currentTarget[stripPrefix(v)] = valueWithUnit;
-                    const otherTarget = isDark.value ? light : dark;
-                    const otherSource = isDark.value
-                        ? currentTheme.value?.light
-                        : currentTheme.value?.dark;
-                    for (const v of field.vars) {
-                        const val = otherSource?.[v];
-                        if (val) otherTarget[stripPrefix(v)] = val;
-                    }
-                }
-            } else {
-                // Mode-agnostic — write to theme section
-                for (const v of field.vars)
-                    theme[stripPrefix(v)] = valueWithUnit;
-            }
-        } else if (field.type === 'font') {
-            // Font fields are mode-agnostic — write to theme section
-            const fallback = field.vars[0]?.includes('mono')
-                ? 'monospace'
-                : field.vars[0]?.includes('serif')
-                  ? 'serif'
-                  : 'sans-serif';
-            const cssValue = `"${field.value}", ${fallback}`;
-            for (const v of field.vars) {
-                theme[stripPrefix(v)] = cssValue;
-            }
-        } else if (field.type === 'select') {
-            // Select fields are mode-agnostic — write to theme section
-            for (const v of field.vars) theme[stripPrefix(v)] = field.value;
-        }
-    }
-
-    // Append computed scale values to the theme section
-    const radiusField = fields.find((f) => f.key === 'radius');
-    if (radiusField?.value && radiusField.type === 'unit') {
-        const radiusVal = `${radiusField.value}${radiusField.props?.unit ?? 'rem'}`;
-        for (const [k, v] of Object.entries(computeRadiusScale(radiusVal))) {
-            theme[stripPrefix(k)] = v;
-        }
-    }
-
-    const trackingField = fields.find((f) => f.key === 'tracking-normal');
-    if (trackingField?.value) {
-        for (const [k, v] of Object.entries(
-            computeTrackingScale(parseFloat(trackingField.value)),
-        )) {
-            theme[stripPrefix(k)] = v;
-        }
-    }
-
-    // Shadow strings for light mode stored in theme section
-    const shadowColorLight =
-        light['shadow-color'] ?? currentTheme.value?.light['--shadow-color'];
-    const shadowOpacityLight = parseFloat(
-        light['shadow-opacity'] ??
-            currentTheme.value?.light['--shadow-opacity'] ??
-            '0.2',
-    );
-    const shadowBlur = parseFloat(theme['shadow-blur'] ?? '30');
-    const shadowSpread = parseFloat(theme['shadow-spread'] ?? '-10');
-    const shadowOffsetX = parseFloat(theme['shadow-offset-x'] ?? '0');
-    const shadowOffsetY = parseFloat(theme['shadow-offset-y'] ?? '1');
-    if (shadowColorLight) {
-        for (const [k, v] of Object.entries(
-            computeShadows(
-                shadowColorLight,
-                shadowOpacityLight,
-                shadowBlur,
-                shadowSpread,
-                shadowOffsetX,
-                shadowOffsetY,
-            ),
-        )) {
-            theme[stripPrefix(k)] = v;
-        }
-    }
-
-    const name = inputName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-
-    return {
-        name,
-        title: inputName,
-        description: '',
-        cssVars: { theme, light, dark },
-    };
+    return themeToJson({
+        fields,
+        synced: fieldSynced,
+        isDark: isDark.value,
+        base: currentTheme.value,
+        name: inputName,
+    });
 }
 
 // When per-field sync is toggled on: snapshot current value into cache.
@@ -647,17 +442,6 @@ watch(
 );
 
 // ── Sidebar sync ─────────────────────────────────────────────────────────────
-
-const SIDEBAR_SYNC_MAP: [string, string][] = [
-    ['sidebar', 'background'],
-    ['sidebar-foreground', 'foreground'],
-    ['sidebar-primary', 'primary'],
-    ['sidebar-primary-foreground', 'primary-foreground'],
-    ['sidebar-accent', 'accent'],
-    ['sidebar-accent-foreground', 'accent-foreground'],
-    ['sidebar-border', 'border'],
-    ['sidebar-ring', 'ring'],
-];
 
 const sidebarSynced = ref<boolean | null>(false);
 
@@ -826,6 +610,7 @@ const dialogCommandOpen = ref(false);
                 side="right"
                 class="flex flex-col gap-0 p-0 shadow-2xl sm:w-105 sm:max-w-none [&>button:last-child]:hidden"
                 overlay-class="bg-black/5 blur-sm"
+                @interact-outside="keepOpenWhileRevealing"
             >
                 <TooltipProvider>
                     <SheetTitle class="sr-only">
@@ -873,7 +658,7 @@ const dialogCommandOpen = ref(false);
                         <ThemePicker
                             :options="themes"
                             :model-value="selectedThemeId"
-                            @update:model-value="selectTheme"
+                            @picked="selectTheme"
                         />
 
                         <!-- Config-driven fields -->
