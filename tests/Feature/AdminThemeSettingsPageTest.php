@@ -2,7 +2,6 @@
 
 namespace Modules\Themes\Tests\Feature;
 
-use App\Enums\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -18,7 +17,7 @@ class AdminThemeSettingsPageTest extends TestCase
     private function actingAsAdmin(): void
     {
         $admin = User::factory()->create();
-        $admin->assignRole(Role::ADMIN);
+        $admin->assignRole('admin');
 
         $this->actingAs($admin);
     }
@@ -89,7 +88,7 @@ class AdminThemeSettingsPageTest extends TestCase
     public function test_only_admins_reach_the_page(): void
     {
         $user = User::factory()->create();
-        $user->assignRole(Role::USER);
+        $user->assignRole('user');
 
         $this->actingAs($user)
             ->get(AdminThemeSettingsPage::getUrl())

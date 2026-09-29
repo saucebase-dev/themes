@@ -2,7 +2,6 @@
 
 namespace Modules\Themes\Tests\Feature;
 
-use App\Enums\Role;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Support\Colors\Color;
@@ -31,7 +30,7 @@ class AdminThemeTest extends TestCase
     private function visitAdmin(): TestResponse
     {
         $admin = User::factory()->create();
-        $admin->assignRole(Role::ADMIN);
+        $admin->assignRole('admin');
 
         return $this->actingAs($admin)->get('/admin');
     }
