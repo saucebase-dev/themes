@@ -10,10 +10,12 @@ Route::middleware(['web', EnsureThemesWritable::class, 'throttle:30,1'])->group(
         ->name('themes.store');
 
     Route::put('/themes/{name}', [ThemesController::class, 'update'])
-        ->name('themes.update');
+        ->name('themes.update')
+        ->where('name', '[a-z0-9-]+');
 
     Route::delete('/themes/{name}', [ThemesController::class, 'destroy'])
-        ->name('themes.destroy');
+        ->name('themes.destroy')
+        ->where('name', '[a-z0-9-]+');
 });
 
 Route::middleware(['web', EnsureLocalEnvironment::class, 'throttle:30,1'])->group(function (): void {

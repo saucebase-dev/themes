@@ -9,14 +9,6 @@ use Illuminate\Foundation\Http\FormRequest;
 class ApplyThemeRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return true;
-    }
-
-    /**
      * Get the validation rules that apply to the request. These values end up in
      * theme.css, so each `cssVars` section is capped, keys must be plain var names,
      * and values can't break out of their declaration (`;{}`, CSS escapes, comments) or load

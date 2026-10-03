@@ -24,6 +24,25 @@ class ThemeService
     }
 
     /**
+     * Write a user theme to storage/app/themes, creating the directory on first use.
+     *
+     * @param  array<string, mixed>  $theme
+     */
+    public static function saveUserTheme(string $filename, array $theme): void
+    {
+        self::ensureUserThemesDir();
+
+        file_put_contents(static::getUserThemePath($filename), json_encode($theme, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+
+    private static function ensureUserThemesDir(): void
+    {
+        if (! is_dir(static::getUserThemesDir())) {
+            mkdir(static::getUserThemesDir(), 0755, true);
+        }
+    }
+
+    /**
      * Get the file path for a theme JSON file in the default themes directory based on the given filename.
      *
      * @param  string  $filename  The name of the theme file (without extension, e.g. "blueberry")
@@ -42,8 +61,8 @@ class ThemeService
      */
     public static function themeExists(string $name): bool
     {
-        return file_exists(static::getUserThemesDir()."/{$name}.json")
-            || file_exists(static::getBundleThemesDir()."/{$name}.json");
+        return file_exists(static::getUserThemePath($name))
+            || file_exists(static::getBundleThemePath($name));
     }
 
     /**
@@ -171,29 +190,19 @@ class ThemeService
             return null;
         }
 
-        /** @param array<string, string> $vars */
-        $prefixKeys = static function (array $vars): array {
-            $result = [];
-            foreach ($vars as $key => $value) {
-                $result['--'.$key] = $value;
-            }
-
-            return $result;
-        };
-
         /** @var array<string, string> $themeVars */
         $themeVars = isset($data['cssVars']['theme']) && is_array($data['cssVars']['theme'])
-            ? $prefixKeys($data['cssVars']['theme'])
+            ? self::prefixKeys($data['cssVars']['theme'])
             : [];
 
         /** @var array<string, string> $lightVars */
         $lightVars = isset($data['cssVars']['light']) && is_array($data['cssVars']['light'])
-            ? $prefixKeys($data['cssVars']['light'])
+            ? self::prefixKeys($data['cssVars']['light'])
             : [];
 
         /** @var array<string, string> $darkVars */
         $darkVars = isset($data['cssVars']['dark']) && is_array($data['cssVars']['dark'])
-            ? $prefixKeys($data['cssVars']['dark'])
+            ? self::prefixKeys($data['cssVars']['dark'])
             : [];
 
         return [
@@ -219,11 +228,8 @@ class ThemeService
         /** @var array<string, mixed> $default */
         $default = json_decode((string) file_get_contents($defaultPath), true);
 
-        $userDir = static::getUserThemesDir();
-        if (! is_dir($userDir)) {
-            mkdir($userDir, 0755, true);
-        }
-        copy($defaultPath, $userDir.'/default.json.backup');
+        self::ensureUserThemesDir();
+        copy($defaultPath, static::getUserThemesDir().'/default.json.backup');
         file_put_contents(
             $defaultPath,
             // Merged, so vars the editor doesn't manage (e.g. destructive-foreground) stay.
@@ -243,13 +249,8 @@ class ThemeService
      */
     public static function applyToCss(array $cssVars, array $layerBase = []): array
     {
-        $prefixKeys = static fn (array $vars): array => array_combine(
-            array_map(fn (string $key): string => '--'.$key, array_keys($vars)),
-            array_values($vars),
-        );
-
-        $light = $prefixKeys(array_merge($cssVars['theme'] ?? [], $cssVars['light'] ?? []));
-        $dark = $prefixKeys($cssVars['dark'] ?? []); // theme vars belong in :root only, not .dark
+        $light = self::prefixKeys(array_merge($cssVars['theme'] ?? [], $cssVars['light'] ?? []));
+        $dark = self::prefixKeys($cssVars['dark'] ?? []); // theme vars belong in :root only, not .dark
 
         if (empty($light) && empty($dark)) {
             throw new RuntimeException('Invalid theme: no CSS variables found');
@@ -277,6 +278,17 @@ class ThemeService
         file_put_contents($themeCssPath, $css);
 
         return ['light' => count($light), 'dark' => count($dark)];
+    }
+
+    /**
+     * `background` → `--background`, the form theme.css declares them in.
+     *
+     * @param  array<string, string>  $vars
+     * @return array<string, string>
+     */
+    private static function prefixKeys(array $vars): array
+    {
+        return collect($vars)->mapWithKeys(fn (string $value, string $key): array => ['--'.$key => $value])->all();
     }
 
     /**

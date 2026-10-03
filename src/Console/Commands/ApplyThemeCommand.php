@@ -16,15 +16,10 @@ class ApplyThemeCommand extends Command
     {
         $theme = $this->argument('theme');
 
-        if (! ThemeService::themeExists($theme)) {
-            $this->error("Theme '{$theme}' not found.");
-
-            return self::FAILURE;
-        }
-
         $content = ThemeService::getTheme($theme);
+
         if ($content === false) {
-            $this->error("Could not read theme: {$theme}");
+            $this->error("Theme '{$theme}' not found.");
 
             return self::FAILURE;
         }

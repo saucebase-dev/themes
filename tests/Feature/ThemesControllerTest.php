@@ -136,4 +136,27 @@ class ThemesControllerTest extends TestCase
 
         $response->assertStatus(422)->assertJsonPath('errors.name', __('A theme with this name already exists.'));
     }
+
+    public function test_a_saved_theme_can_be_updated_and_deleted(): void
+    {
+        $this->postJson(route('themes.store'), $this->validPayload())->assertOk();
+
+        $this->putJson(route('themes.update', 'test-theme'), [...$this->validPayload(), 'title' => 'Renamed'])->assertOk();
+        $this->assertStringContainsString('Renamed', (string) file_get_contents($this->storageDir.'/test-theme.json'));
+
+        $this->deleteJson(route('themes.destroy', 'test-theme'))->assertOk();
+        $this->assertFileDoesNotExist($this->storageDir.'/test-theme.json');
+    }
+
+    public function test_a_shipped_or_missing_theme_cannot_be_updated_or_deleted(): void
+    {
+        $this->putJson(route('themes.update', 'default'), $this->validPayload('default'))->assertNotFound();
+        $this->deleteJson(route('themes.destroy', 'test-missing'))->assertNotFound();
+    }
+
+    public function test_a_theme_name_outside_kebab_case_is_not_a_route(): void
+    {
+        $this->putJson('/themes/Bad_Name', $this->validPayload())->assertNotFound();
+        $this->deleteJson('/themes/Bad_Name')->assertNotFound();
+    }
 }
