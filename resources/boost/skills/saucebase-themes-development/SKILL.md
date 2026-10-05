@@ -48,6 +48,10 @@ Theme selection is **global** (one theme for all users). Per-user or per-tenant 
 
 ## Architecture
 
+### Admin Permission
+
+`manage themes` covers the `AdminThemeSettings` page (`canAccess()`). `access admin panel` alone only opens the panel. `Database\Seeders\DatabaseSeeder` creates it, granted to nobody; the app's roles seeder decides who gets it, and `admin` passes every check. The frontend theme routes are gated by `themes.writable` and the local environment, not by this permission.
+
 ### Data flow
 
 ```

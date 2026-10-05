@@ -29,6 +29,11 @@ class AdminThemeSettings extends SettingsPage
 
     protected static string $settings = Settings::class;
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can('manage themes') ?? false;
+    }
+
     public static function getNavigationLabel(): string
     {
         return __('Admin theme');
