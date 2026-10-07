@@ -9,6 +9,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useT } from '@/i18n';
 import { router, useHttp } from '@inertiajs/react';
+import { httpFailureHandlers } from '@js/lib/http';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import IconSave from '~icons/lucide/save';
@@ -66,7 +67,12 @@ export default function DialogSave({
                 toast.error(t(errors?.name ?? 'Failed to save theme'));
                 setLoading(false);
             },
-        });
+            // `onError` covers 422s only; these say the rest.
+            ...httpFailureHandlers((message) => {
+                toast.error(t(message));
+                setLoading(false);
+            }),
+        }).catch(() => {});
     }
 
     return (

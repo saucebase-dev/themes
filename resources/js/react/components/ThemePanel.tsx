@@ -25,6 +25,7 @@ import {
 import { useDialog } from '@/hooks/useDialog';
 import { useT } from '@/i18n';
 import { router, useHttp, usePage } from '@inertiajs/react';
+import { httpFailureHandlers } from '@js/lib/http';
 import {
     isRevealing,
     revealTransition,
@@ -145,6 +146,8 @@ export default function ThemePanel() {
     const isDark = useIsDark();
     const { confirm, isOpen: isConfirming } = useDialog();
     const http = useHttp({});
+    // `onError` covers 422s only; these say the rest.
+    const failure = httpFailureHandlers((message) => toast.error(t(message)));
     const [, rerender] = useReducer((n: number) => n + 1, 0);
 
     const themesProp = page.props?.themes;
@@ -490,7 +493,8 @@ export default function ThemePanel() {
             onError() {
                 toast.error(t('Failed to update theme'));
             },
-        });
+            ...failure,
+        }).catch(() => {});
     }
 
     async function remove(): Promise<void> {
@@ -518,7 +522,8 @@ export default function ThemePanel() {
             onError() {
                 toast.error(t('Failed to delete theme'));
             },
-        });
+            ...failure,
+        }).catch(() => {});
     }
 
     async function apply(): Promise<void> {
@@ -553,7 +558,8 @@ export default function ThemePanel() {
             onError() {
                 toast.error(t('Failed to set theme as default'));
             },
-        });
+            ...failure,
+        }).catch(() => {});
     }
 
     if (!themesProp) {

@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { router, useHttp } from '@inertiajs/vue3';
+import { httpFailureHandlers } from '@js/lib/http';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
@@ -66,10 +67,12 @@ const handleSave = async () => {
             else toast.error(trans('Failed to save theme'));
             return true;
         },
+        // `onError` covers 422s only; these say the rest.
+        ...httpFailureHandlers((message) => toast.error(trans(message))),
         onFinish: () => {
             loading.value = false;
         },
-    });
+    }).catch(() => {});
 };
 </script>
 

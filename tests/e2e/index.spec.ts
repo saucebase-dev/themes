@@ -132,6 +132,25 @@ test.describe('Theme panel', () => {
         );
     });
 
+    /** Only a 422 reaches `onError`; anything else must still tell the user. */
+    test('save as shows an error when the server fails', async ({ page }) => {
+        await page.route('**/themes', (route) =>
+            route.request().method() === 'POST'
+                ? route.fulfill({ status: 500, body: '' })
+                : route.continue(),
+        );
+        await page.getByTestId('theme-panel-trigger').click();
+        await page.getByTestId('theme-panel-save-as').click();
+
+        await page.getByTestId('save-theme-name').fill('Never Saved');
+        await page.getByTestId('save-theme-submit').click();
+
+        await expect(
+            page.getByText('Something went wrong. Try again.'),
+        ).toBeVisible();
+        await expect(page.getByTestId('save-theme-submit')).toBeEnabled();
+    });
+
     test('color input updates CSS custom property live', async ({ page }) => {
         await page.getByTestId('theme-panel-trigger').click();
 
