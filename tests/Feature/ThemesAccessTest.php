@@ -3,7 +3,7 @@
 namespace Modules\Themes\Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Saucebase\Core\Services\FrontendConfig;
+use Saucebase\Core\FrontendConfig;
 use Tests\TestCase;
 
 class ThemesAccessTest extends TestCase

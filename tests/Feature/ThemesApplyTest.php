@@ -5,7 +5,7 @@ namespace Modules\Themes\Tests\Feature;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Themes\Services\ThemeService;
-use Saucebase\Core\Services\FrontendConfig;
+use Saucebase\Core\FrontendConfig;
 use Tests\TestCase;
 
 class ThemesApplyTest extends TestCase
