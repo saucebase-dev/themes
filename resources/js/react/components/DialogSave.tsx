@@ -7,9 +7,9 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useHttp } from '@/hooks/useHttp';
 import { useT } from '@/i18n';
-import { router, useHttp } from '@inertiajs/react';
-import { httpFailureHandlers } from '@js/lib/http';
+import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import IconSave from '~icons/lucide/save';
@@ -31,7 +31,11 @@ export default function DialogSave({
     onThemeSaved,
 }: DialogSaveProps) {
     const t = useT();
-    const http = useHttp({});
+    // The toast, plus re-enabling Save, which only this dialog knows about.
+    const http = useHttp({}, (message) => {
+        toast.error(t(message));
+        setLoading(false);
+    });
     const [name, setName] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -67,12 +71,7 @@ export default function DialogSave({
                 toast.error(t(errors?.name ?? 'Failed to save theme'));
                 setLoading(false);
             },
-            // `onError` covers 422s only; these say the rest.
-            ...httpFailureHandlers((message) => {
-                toast.error(t(message));
-                setLoading(false);
-            }),
-        }).catch(() => {});
+        });
     }
 
     return (

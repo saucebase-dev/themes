@@ -43,8 +43,8 @@ import { computed, nextTick, reactive, ref, watch } from 'vue';
 import type { FieldState, Font, Theme } from '../../types';
 
 import { useDialog } from '@/composables/useDialog';
-import { router, useHttp, usePage } from '@inertiajs/vue3';
-import { httpFailureHandlers } from '@js/lib/http';
+import { useHttp } from '@/composables/useHttp';
+import { router, usePage } from '@inertiajs/vue3';
 import { useColorMode } from '@vueuse/core';
 import { trans } from 'laravel-vue-i18n';
 import { toast } from 'vue-sonner';
@@ -90,8 +90,6 @@ const http = useHttp({
         dark: {} as Record<string, string>,
     },
 });
-// `onError` covers 422s only; these say the rest.
-const failure = httpFailureHandlers((message) => toast.error(trans(message)));
 const colorMode = useColorMode({ storageKey: 'appearance' });
 const isDark = computed(() => colorMode.value === 'dark');
 const { confirm, isOpen: isConfirming } = useDialog();
@@ -400,22 +398,19 @@ async function save(): Promise<void> {
     http.description = payload.description;
     http.cssVars = payload.cssVars;
 
-    await http
-        .put(route('themes.update', { name: theme.id }), {
-            onSuccess() {
-                originalValues.value = Object.fromEntries(
-                    fields.map((f) => [f.key, f.value]),
-                );
-                toast.success(trans('Theme updated successfully'), {
-                    testId: 'theme-updated-toast',
-                });
-            },
-            onError() {
-                toast.error(trans('Failed to update theme'));
-            },
-            ...failure,
-        })
-        .catch(() => {});
+    await http.put(route('themes.update', { name: theme.id }), {
+        onSuccess() {
+            originalValues.value = Object.fromEntries(
+                fields.map((f) => [f.key, f.value]),
+            );
+            toast.success(trans('Theme updated successfully'), {
+                testId: 'theme-updated-toast',
+            });
+        },
+        onError() {
+            toast.error(trans('Failed to update theme'));
+        },
+    });
 }
 
 // ── Delete (saved presets only) ──────────────────────────────────────────────
@@ -434,21 +429,18 @@ async function remove(): Promise<void> {
     });
     if (!ok) return;
 
-    await http
-        .delete(route('themes.destroy', { name: theme.id }), {
-            onSuccess() {
-                selectTheme(defaultThemeId.value);
-                router.reload({ only: ['themes'] });
-                toast.success(trans('Theme deleted'), {
-                    testId: 'theme-deleted-toast',
-                });
-            },
-            onError() {
-                toast.error(trans('Failed to delete theme'));
-            },
-            ...failure,
-        })
-        .catch(() => {});
+    await http.delete(route('themes.destroy', { name: theme.id }), {
+        onSuccess() {
+            selectTheme(defaultThemeId.value);
+            router.reload({ only: ['themes'] });
+            toast.success(trans('Theme deleted'), {
+                testId: 'theme-deleted-toast',
+            });
+        },
+        onError() {
+            toast.error(trans('Failed to delete theme'));
+        },
+    });
 }
 
 // ── Set as default (local only) ──────────────────────────────────────────────
@@ -467,29 +459,26 @@ async function apply(): Promise<void> {
 
     http.cssVars = toJson(currentTheme.value?.name ?? '').cssVars;
 
-    await http
-        .post(route('themes.apply'), {
-            onSuccess() {
-                // Default now holds these values; show it as the current theme.
-                router.reload({
-                    only: ['themes'],
-                    onSuccess: () => {
-                        originalValues.value = Object.fromEntries(
-                            fields.map((f) => [f.key, f.value]),
-                        );
-                        selectTheme(defaultThemeId.value);
-                        toast.success(trans('Theme set as default'), {
-                            testId: 'theme-default-set-toast',
-                        });
-                    },
-                });
-            },
-            onError() {
-                toast.error(trans('Failed to set theme as default'));
-            },
-            ...failure,
-        })
-        .catch(() => {});
+    await http.post(route('themes.apply'), {
+        onSuccess() {
+            // Default now holds these values; show it as the current theme.
+            router.reload({
+                only: ['themes'],
+                onSuccess: () => {
+                    originalValues.value = Object.fromEntries(
+                        fields.map((f) => [f.key, f.value]),
+                    );
+                    selectTheme(defaultThemeId.value);
+                    toast.success(trans('Theme set as default'), {
+                        testId: 'theme-default-set-toast',
+                    });
+                },
+            });
+        },
+        onError() {
+            toast.error(trans('Failed to set theme as default'));
+        },
+    });
 }
 
 // ── Save as JSON ──────────────────────────────────────────────────────────────
