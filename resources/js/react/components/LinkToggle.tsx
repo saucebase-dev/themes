@@ -3,7 +3,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useT } from '@/i18n';
+import { useT } from '@saucebase/react/i18n';
 import type { SyntheticEvent } from 'react';
 import IconLock from '~icons/lucide/lock';
 import IconLockOpen from '~icons/lucide/lock-open';

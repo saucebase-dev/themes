@@ -42,8 +42,8 @@ import {
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import type { FieldState, Font, Theme } from '../../types';
 
-import { useDialog } from '@/composables/useDialog';
-import { useHttp } from '@/composables/useHttp';
+import { useDialog } from '@saucebase/vue/composables/useDialog';
+import { useHttp } from '@saucebase/vue/composables/useHttp';
 import { router, usePage } from '@inertiajs/vue3';
 import { useColorMode } from '@vueuse/core';
 import { trans } from 'laravel-vue-i18n';

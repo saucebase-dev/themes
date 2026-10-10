@@ -7,9 +7,9 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useHttp } from '@/hooks/useHttp';
-import { useT } from '@/i18n';
 import { router } from '@inertiajs/react';
+import { useHttp } from '@saucebase/react/hooks/useHttp';
+import { useT } from '@saucebase/react/i18n';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import IconSave from '~icons/lucide/save';

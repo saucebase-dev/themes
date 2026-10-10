@@ -1,5 +1,5 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useT } from '@/i18n';
+import { useT } from '@saucebase/react/i18n';
 import { useState } from 'react';
 import IconList from '~icons/heroicons/bars-3';
 import IconSearch from '~icons/heroicons/magnifying-glass';

@@ -11,7 +11,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { useT } from '@/i18n';
+import { useT } from '@saucebase/react/i18n';
 import {
     useEffect,
     useRef,

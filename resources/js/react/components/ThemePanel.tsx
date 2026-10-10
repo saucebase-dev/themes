@@ -22,15 +22,15 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useDialog } from '@/hooks/useDialog';
-import { useHttp } from '@/hooks/useHttp';
-import { useT } from '@/i18n';
 import { router, usePage } from '@inertiajs/react';
 import {
     isRevealing,
     revealTransition,
     type RevealOrigin,
 } from '@saucebase/core/lib/themeReveal';
+import { useDialog } from '@saucebase/react/hooks/useDialog';
+import { useHttp } from '@saucebase/react/hooks/useHttp';
+import { useT } from '@saucebase/react/i18n';
 import {
     useEffect,
     useLayoutEffect,

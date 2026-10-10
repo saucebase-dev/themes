@@ -4,7 +4,7 @@ import {
     InputGroupButton,
     InputGroupInput,
 } from '@/components/ui/input-group';
-import { useT } from '@/i18n';
+import { useT } from '@saucebase/react/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import IconEyedropper from '~icons/fa-solid/eye-dropper';
 import { contrastingIconColor, swatchBackground } from '../../lib/color';

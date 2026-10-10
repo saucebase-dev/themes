@@ -8,7 +8,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useT } from '@/i18n';
+import { useT } from '@saucebase/react/i18n';
 import { toast } from 'sonner';
 import IconCopy from '~icons/lucide/copy';
 
