@@ -61,11 +61,15 @@ test.describe('Theme panel', () => {
         await page.getByTestId('theme-picker-trigger').click();
         await page.getByTestId('theme-option-coffee').click();
 
-        const stored = await page.evaluate(
-            (key) => localStorage.getItem(key),
-            THEME_STORAGE_KEY,
-        );
-        expect(stored).toBe('coffee');
+        // The theme is stored after the reveal transition, not on the click itself.
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    (key) => localStorage.getItem(key),
+                    THEME_STORAGE_KEY,
+                ),
+            )
+            .toBe('coffee');
     });
 
     test('selected theme persists after page reload', async ({ page }) => {
