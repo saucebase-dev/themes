@@ -27,7 +27,7 @@ A developer-facing visual theming system for Saucebase. Lets the SaaS owner desi
 - Light/dark: each theme defines both modes; per-field cross-mode sync (link toggle)
 - Shadow, radius and tracking scales computed from single base vars (see below)
 - Google Fonts loaded on demand
-- Theme picker with circle-reveal transition (the app's `resources/js/lib/themeReveal.ts`)
+- Theme picker with circle-reveal transition (`@saucebase/core/lib/themeReveal`)
 - Preview persists in `localStorage` key `sb-theme-theme` (this browser only)
 - Footer: Delete (saved presets) · Reset · **Set as default** (local only) · Save menu (Save / Save as)
 - Filament admin theme: a separate settings page (`AdminThemeSettings`), colours/font/radius for the admin panel via `ThemesPlugin`

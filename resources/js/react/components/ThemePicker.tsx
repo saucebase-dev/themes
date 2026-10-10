@@ -5,7 +5,10 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useT } from '@/i18n';
-import { revealOrigin, type RevealOrigin } from '@js/lib/themeReveal';
+import {
+    revealOrigin,
+    type RevealOrigin,
+} from '@saucebase/core/lib/themeReveal';
 import { useState, type MouseEvent } from 'react';
 import type { Theme } from '../../types';
 import { useIsDark } from '../hooks/useIsDark';

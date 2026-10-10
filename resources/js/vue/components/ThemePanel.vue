@@ -38,7 +38,7 @@ import {
     isRevealing,
     revealTransition,
     type RevealOrigin,
-} from '@js/lib/themeReveal';
+} from '@saucebase/core/lib/themeReveal';
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import type { FieldState, Font, Theme } from '../../types';
 

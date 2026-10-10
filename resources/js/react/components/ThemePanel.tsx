@@ -30,7 +30,7 @@ import {
     isRevealing,
     revealTransition,
     type RevealOrigin,
-} from '@js/lib/themeReveal';
+} from '@saucebase/core/lib/themeReveal';
 import {
     useEffect,
     useLayoutEffect,

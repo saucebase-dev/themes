@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { revealOrigin, type RevealOrigin } from '@js/lib/themeReveal';
+import {
+    revealOrigin,
+    type RevealOrigin,
+} from '@saucebase/core/lib/themeReveal';
 import {
     Popover,
     PopoverContent,
