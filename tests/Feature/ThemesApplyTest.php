@@ -5,7 +5,7 @@ namespace Modules\Themes\Tests\Feature;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Themes\Services\ThemeService;
-use Saucebase\Core\FrontendConfig;
+use Saucebase\Core\ProjectConfig;
 use Tests\TestCase;
 
 class ThemesApplyTest extends TestCase
@@ -35,7 +35,7 @@ class ThemesApplyTest extends TestCase
         $this->originalDefaultJson = (string) file_get_contents($this->defaultJsonPath);
         $this->originalBackup = is_file($this->backupJsonPath) ? (string) file_get_contents($this->backupJsonPath) : null;
 
-        app()->bind(FrontendConfig::class, fn () => new class extends FrontendConfig
+        app()->bind(ProjectConfig::class, fn () => new class extends ProjectConfig
         {
             public function getFramework(): string
             {

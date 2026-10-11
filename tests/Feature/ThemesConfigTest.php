@@ -3,7 +3,7 @@
 namespace Modules\Themes\Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Saucebase\Core\FrontendConfig;
+use Saucebase\Core\ProjectConfig;
 use Tests\TestCase;
 
 class ThemesConfigTest extends TestCase
@@ -18,7 +18,7 @@ class ThemesConfigTest extends TestCase
         $this->storageDir = storage_path('app/themes');
         config(['themes.writable' => true]);
 
-        app()->bind(FrontendConfig::class, fn () => new class extends FrontendConfig
+        app()->bind(ProjectConfig::class, fn () => new class extends ProjectConfig
         {
             public function getFramework(): string
             {
