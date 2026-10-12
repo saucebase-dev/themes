@@ -344,7 +344,8 @@ class ThemeService
         $block = "@layer base {\n{$content}\n}";
 
         if (preg_match($pattern, $css)) {
-            return (string) preg_replace($pattern, $block, $css);
+            // A callback, so `$1` or `\1` in a value is written as-is, not as a backreference.
+            return (string) preg_replace_callback($pattern, fn (): string => $block, $css);
         }
 
         return rtrim($css)."\n\n{$block}\n";

@@ -77,7 +77,6 @@ export function applyThemeVars(theme: Theme | null, isDark: boolean): void {
         return;
     }
 
-    const el = document.documentElement;
     const themeFieldsList = themeFields();
     const fontFieldVars = new Set(
         themeFieldsList.filter((f) => f.type === 'font').flatMap((f) => f.vars),

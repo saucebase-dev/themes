@@ -3,6 +3,8 @@
 namespace Modules\Themes\Filament;
 
 use Filament\Contracts\Plugin;
+use Filament\FontProviders\BunnyFontProvider;
+use Filament\FontProviders\LocalFontProvider;
 use Filament\Panel;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Support\HtmlString;
@@ -32,7 +34,14 @@ class ThemesPlugin implements Plugin
     {
         $panel
             ->colors(fn (): array => AdminTheme::palettes($this->settings()->toArray()))
-            ->font(fn (): ?string => $this->settings()->font)
+            // Filament takes any closure for a custom font and would fetch its own default
+            // from a font CDN, so the provider is chosen from the setting too.
+            ->font(
+                fn (): ?string => $this->settings()->font,
+                provider: fn (): string => $this->settings()->font === null
+                    ? LocalFontProvider::class
+                    : BunnyFontProvider::class,
+            )
             ->renderHook(PanelsRenderHook::HEAD_END, function (): ?HtmlString {
                 $css = AdminTheme::radiusCss($this->settings()->radius);
 

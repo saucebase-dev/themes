@@ -5,5 +5,3 @@ import ThemePanel from './components/ThemePanel';
 export function setup() {
     registerGlobalComponent('top', ThemePanel);
 }
-
-export function afterMount() {}

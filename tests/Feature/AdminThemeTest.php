@@ -4,6 +4,8 @@ namespace Modules\Themes\Tests\Feature;
 
 use App\Models\User;
 use Filament\Facades\Filament;
+use Filament\FontProviders\BunnyFontProvider;
+use Filament\FontProviders\LocalFontProvider;
 use Filament\Support\Colors\Color;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
@@ -59,6 +61,16 @@ class AdminThemeTest extends TestCase
         $this->saveSettings(['font' => 'Lexend']);
 
         $this->assertSame('Lexend', Filament::getPanel('admin')->getFontFamily());
+    }
+
+    public function test_no_font_keeps_the_font_filament_ships(): void
+    {
+        // Served from the application, not fetched from a font CDN.
+        $this->assertSame(LocalFontProvider::class, Filament::getPanel('admin')->getFontProvider());
+
+        $this->saveSettings(['font' => 'Lexend']);
+
+        $this->assertSame(BunnyFontProvider::class, Filament::getPanel('admin')->getFontProvider());
     }
 
     public function test_a_radius_reaches_the_rendered_page(): void

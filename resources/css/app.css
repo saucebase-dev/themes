@@ -24,6 +24,11 @@
     outline: none;
 }
 
+.color-picker-hue-slider:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+}
+
 .color-picker-hue-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;

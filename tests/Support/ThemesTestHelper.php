@@ -56,6 +56,11 @@ class ThemesTestHelper
     {
         $dir = self::snapshotDir();
 
+        // No snapshot was taken, so there is nothing to compare against: the real files stay.
+        if (! is_dir($dir)) {
+            return;
+        }
+
         // A file missing from the snapshot didn't exist before the run: remove it.
         foreach (self::defaultFiles() as $name => $path) {
             if (is_file("{$dir}/{$name}")) {

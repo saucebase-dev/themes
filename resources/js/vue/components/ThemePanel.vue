@@ -761,7 +761,7 @@ const dialogCommandOpen = ref(false);
                                         >
                                             <span
                                                 class="text-foreground text-xs font-bold tracking-wider uppercase"
-                                                >{{ $t(section.name) }}</span
+                                                >{{ section.name }}</span
                                             >
                                             <div
                                                 class="relative flex items-center gap-2"
@@ -769,7 +769,7 @@ const dialogCommandOpen = ref(false);
                                                 <LinkToggle
                                                     v-if="
                                                         section.name ===
-                                                        'Sidebar'
+                                                        $t('Sidebar')
                                                     "
                                                     v-model="sidebarSynced"
                                                     :tooltip="
@@ -833,7 +833,7 @@ const dialogCommandOpen = ref(false);
                                                     <p
                                                         class="text-muted-foreground px-0.5 text-xs font-medium"
                                                     >
-                                                        {{ $t(field.label) }}
+                                                        {{ field.label }}
                                                     </p>
                                                     <div
                                                         class="border-border flex overflow-hidden rounded-md border"
@@ -860,9 +860,7 @@ const dialogCommandOpen = ref(false);
                                                                     option.value
                                                             "
                                                         >
-                                                            {{
-                                                                $t(option.label)
-                                                            }}
+                                                            {{ option.label }}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -875,7 +873,7 @@ const dialogCommandOpen = ref(false);
                                                     <p
                                                         class="text-muted-foreground px-0.5 text-xs font-medium"
                                                     >
-                                                        {{ $t(field.label) }}
+                                                        {{ field.label }}
                                                     </p>
                                                     <FontPicker
                                                         :fonts="
@@ -891,14 +889,14 @@ const dialogCommandOpen = ref(false);
                                                     v-else-if="
                                                         field.type === 'unit'
                                                     "
-                                                    :label="$t(field.label)"
+                                                    :label="field.label"
                                                     :test-id="`slider-input-${field.key}`"
                                                     v-model="field.value"
                                                     v-bind="field.props"
                                                 />
                                                 <ColorInput
                                                     v-else
-                                                    :label="$t(field.label)"
+                                                    :label="field.label"
                                                     :test-id="`color-input-${field.key}`"
                                                     v-model="field.value"
                                                     v-model:synced="
