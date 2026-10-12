@@ -2,6 +2,8 @@
 
 namespace Modules\Themes\Services;
 
+use RuntimeException;
+
 class ThemeService
 {
     public const BUNDLE_THEMES_DIR = 'resources/themes';
@@ -9,8 +11,6 @@ class ThemeService
     public const USER_THEMES_DIR = 'app/themes';
 
     public const FONTS_DIR = 'resources/fonts';
-
-    // TODO: move command logic that reads/parses theme files into this service so it can be reused by the command and the controller
 
     /**
      * Get the file path for a user-defined theme JSON file based on the given filename.
@@ -21,6 +21,25 @@ class ThemeService
     public static function getUserThemePath(string $filename): string
     {
         return static::getUserThemesDir()."/{$filename}.json";
+    }
+
+    /**
+     * Write a user theme to storage/app/themes, creating the directory on first use.
+     *
+     * @param  array<string, mixed>  $theme
+     */
+    public static function saveUserTheme(string $filename, array $theme): void
+    {
+        self::ensureUserThemesDir();
+
+        file_put_contents(static::getUserThemePath($filename), json_encode($theme, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+
+    private static function ensureUserThemesDir(): void
+    {
+        if (! is_dir(static::getUserThemesDir())) {
+            mkdir(static::getUserThemesDir(), 0755, true);
+        }
     }
 
     /**
@@ -42,8 +61,8 @@ class ThemeService
      */
     public static function themeExists(string $name): bool
     {
-        return file_exists(static::getUserThemesDir()."/{$name}.json")
-            || file_exists(static::getBundleThemesDir()."/{$name}.json");
+        return file_exists(static::getUserThemePath($name))
+            || file_exists(static::getBundleThemePath($name));
     }
 
     /**
@@ -171,29 +190,19 @@ class ThemeService
             return null;
         }
 
-        /** @param array<string, string> $vars */
-        $prefixKeys = static function (array $vars): array {
-            $result = [];
-            foreach ($vars as $key => $value) {
-                $result['--'.$key] = $value;
-            }
-
-            return $result;
-        };
-
         /** @var array<string, string> $themeVars */
         $themeVars = isset($data['cssVars']['theme']) && is_array($data['cssVars']['theme'])
-            ? $prefixKeys($data['cssVars']['theme'])
+            ? self::prefixKeys($data['cssVars']['theme'])
             : [];
 
         /** @var array<string, string> $lightVars */
         $lightVars = isset($data['cssVars']['light']) && is_array($data['cssVars']['light'])
-            ? $prefixKeys($data['cssVars']['light'])
+            ? self::prefixKeys($data['cssVars']['light'])
             : [];
 
         /** @var array<string, string> $darkVars */
         $darkVars = isset($data['cssVars']['dark']) && is_array($data['cssVars']['dark'])
-            ? $prefixKeys($data['cssVars']['dark'])
+            ? self::prefixKeys($data['cssVars']['dark'])
             : [];
 
         return [
@@ -203,5 +212,142 @@ class ThemeService
             'light' => array_merge($themeVars, $lightVars),
             'dark' => array_merge($themeVars, $darkVars),
         ];
+    }
+
+    /**
+     * Make `cssVars` the shipped "default" theme, so the picker's Default entry keeps
+     * matching theme.css. The replaced file is kept as storage/app/themes/default.json.backup:
+     * the picker ignores it, and outside resources/ the Vite dev server doesn't reload the
+     * page when it changes. Copy it back over default.json to restore.
+     *
+     * @param  array{theme?: array<string, string>, light?: array<string, string>, dark?: array<string, string>}  $cssVars
+     */
+    public static function replaceDefault(array $cssVars): void
+    {
+        $defaultPath = static::getBundleThemePath('default');
+        /** @var array<string, mixed> $default */
+        $default = json_decode((string) file_get_contents($defaultPath), true);
+
+        self::ensureUserThemesDir();
+        copy($defaultPath, static::getUserThemesDir().'/default.json.backup');
+        file_put_contents(
+            $defaultPath,
+            // Merged, so vars the editor doesn't manage (e.g. destructive-foreground) stay.
+            json_encode([...$default, 'cssVars' => array_replace_recursive($default['cssVars'] ?? [], $cssVars)], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n",
+        );
+    }
+
+    /**
+     * Patch a theme into resources/css/theme.css: `theme` + `light` vars into `:root`,
+     * `dark` vars into `.dark`, and optional `@layer base` rules.
+     *
+     * @param  array{theme?: array<string, string>, light?: array<string, string>, dark?: array<string, string>}  $cssVars
+     * @param  array<string, array<string, string>>  $layerBase
+     * @return array{light: int, dark: int} Number of vars patched per block
+     *
+     * @throws RuntimeException When there is nothing to apply or theme.css can't be read
+     */
+    public static function applyToCss(array $cssVars, array $layerBase = []): array
+    {
+        $light = self::prefixKeys(array_merge($cssVars['theme'] ?? [], $cssVars['light'] ?? []));
+        $dark = self::prefixKeys($cssVars['dark'] ?? []); // theme vars belong in :root only, not .dark
+
+        if (empty($light) && empty($dark)) {
+            throw new RuntimeException('Invalid theme: no CSS variables found');
+        }
+
+        $themeCssPath = resource_path('css/theme.css');
+        $css = file_exists($themeCssPath) ? file_get_contents($themeCssPath) : false;
+
+        if ($css === false) {
+            throw new RuntimeException("Could not read theme.css at: {$themeCssPath}");
+        }
+
+        if (! empty($light)) {
+            $css = self::patchBlock($css, ':root', $light);
+        }
+
+        if (! empty($dark)) {
+            $css = self::patchBlock($css, '.dark', $dark);
+        }
+
+        if (! empty($layerBase)) {
+            $css = self::patchLayerBase($css, self::renderLayerBase($layerBase));
+        }
+
+        file_put_contents($themeCssPath, $css);
+
+        return ['light' => count($light), 'dark' => count($dark)];
+    }
+
+    /**
+     * `background` → `--background`, the form theme.css declares them in.
+     *
+     * @param  array<string, string>  $vars
+     * @return array<string, string>
+     */
+    private static function prefixKeys(array $vars): array
+    {
+        return collect($vars)->mapWithKeys(fn (string $value, string $key): array => ['--'.$key => $value])->all();
+    }
+
+    /**
+     * Patch specific CSS variables inside a top-level selector block (e.g. :root or .dark).
+     * Existing vars are updated in-place; new vars are appended before the closing brace.
+     * Note: [^{}]* intentionally rejects nested braces — theme.css :root/.dark blocks are flat.
+     *
+     * @param  array<string, string>  $vars
+     */
+    private static function patchBlock(string $css, string $selector, array $vars): string
+    {
+        $pattern = '/'.preg_quote($selector, '/').'\s*\{([^{}]*)\}/s';
+
+        return preg_replace_callback($pattern, function (array $matches) use ($vars): string {
+            $block = $matches[1];
+
+            foreach ($vars as $variable => $value) {
+                $varPattern = '/'.preg_quote($variable, '/').'\s*:[^;]+;/';
+                $replacement = "{$variable}: {$value};";
+
+                if (preg_match($varPattern, $block)) {
+                    // A callback, so `$1` or `\1` in a value is written as-is, not as a backreference.
+                    $block = (string) preg_replace_callback($varPattern, fn (): string => $replacement, $block);
+                } else {
+                    $block = rtrim($block)."\n    {$replacement}\n";
+                }
+            }
+
+            return str_replace($matches[1], $block, $matches[0]);
+        }, $css) ?? $css;
+    }
+
+    /**
+     * @param  array<string, array<string, string>>  $rules
+     */
+    private static function renderLayerBase(array $rules): string
+    {
+        $lines = [];
+        foreach ($rules as $selector => $properties) {
+            $lines[] = "    {$selector} {";
+            foreach ($properties as $property => $value) {
+                $lines[] = "        {$property}: {$value};";
+            }
+            $lines[] = '    }';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private static function patchLayerBase(string $css, string $content): string
+    {
+        $pattern = '/@layer\s+base\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/s';
+        $block = "@layer base {\n{$content}\n}";
+
+        if (preg_match($pattern, $css)) {
+            // A callback, so `$1` or `\1` in a value is written as-is, not as a backreference.
+            return (string) preg_replace_callback($pattern, fn (): string => $block, $css);
+        }
+
+        return rtrim($css)."\n\n{$block}\n";
     }
 }

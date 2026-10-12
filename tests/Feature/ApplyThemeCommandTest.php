@@ -2,12 +2,11 @@
 
 namespace Modules\Themes\Tests\Feature;
 
+use Modules\Themes\Services\ThemeService;
 use Tests\TestCase;
 
 class ApplyThemeCommandTest extends TestCase
 {
-    private string $themesDir;
-
     private string $themeCssPath;
 
     private string $originalCss;
@@ -16,7 +15,6 @@ class ApplyThemeCommandTest extends TestCase
     {
         parent::setUp();
 
-        $this->themesDir = module_path('Themes', 'resources/themes');
         $this->themeCssPath = resource_path('css/theme.css');
         $this->originalCss = file_get_contents($this->themeCssPath);
     }
@@ -96,6 +94,14 @@ class ApplyThemeCommandTest extends TestCase
         $css = file_get_contents($this->themeCssPath);
         $this->assertStringContainsString('@layer base', $css);
         $this->assertMatchesRegularExpression('/body\s*\{[^}]*letter-spacing\s*:/s', $css);
+    }
+
+    public function test_layer_base_values_are_written_literally(): void
+    {
+        ThemeService::applyToCss(['light' => ['background' => '#fff']], ['body' => ['font-family' => '"$0 Sans"']]);
+        ThemeService::applyToCss(['light' => ['background' => '#fff']], ['body' => ['font-family' => '"$0 Sans"']]);
+
+        $this->assertStringContainsString('font-family: "$0 Sans";', (string) file_get_contents($this->themeCssPath));
     }
 
     // ── Error handling ────────────────────────────────────────────────────────

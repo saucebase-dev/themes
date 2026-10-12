@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import {
+    revealOrigin,
+    type RevealOrigin,
+} from '@saucebase/core/lib/themeReveal';
+import {
     Popover,
     PopoverContent,
     PopoverTrigger,
@@ -7,7 +11,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useColorMode } from '@vueuse/core';
 import { computed, ref } from 'vue';
-import type { Theme } from '../types';
+import type { Theme } from '../../types';
 import SearchInput from './SearchInput.vue';
 import ThemeColorSwatch from './ThemeColorSwatch.vue';
 
@@ -51,7 +55,11 @@ const filtered = computed(() => {
         : themes.value;
 });
 
-function select(id: string) {
+const emit = defineEmits<{ picked: [id: string, origin: RevealOrigin] }>();
+
+function select(id: string, event: MouseEvent) {
+    // Measured before the popover closes and removes the option.
+    emit('picked', id, revealOrigin(event.currentTarget as HTMLElement));
     model.value = id;
     isOpen.value = false;
 }
@@ -111,7 +119,7 @@ function select(id: string) {
                         :key="theme.id"
                         :data-testid="`theme-option-${theme.id}`"
                         class="hover:bg-accent focus-visible:ring-ring flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
-                        @click="select(theme.id)"
+                        @click="select(theme.id, $event)"
                     >
                         <ThemeColorSwatch
                             :preview="theme.preview"

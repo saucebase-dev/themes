@@ -15,7 +15,7 @@ import { toast } from 'vue-sonner';
 
 import IconCopy from '~icons/lucide/copy';
 
-const open = defineModel({ default: false });
+const open = defineModel<boolean>({ default: false });
 
 const props = defineProps<{
     themeId: string;

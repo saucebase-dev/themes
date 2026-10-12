@@ -23,10 +23,14 @@ const model = defineModel<string>({ default: '' });
             class="text-muted-foreground size-4 shrink-0"
             aria-hidden="true"
         />
-        <IconX
+        <button
             v-else
-            class="text-muted-foreground size-4 shrink-0 cursor-pointer"
+            type="button"
+            :aria-label="$t('Clear')"
+            class="text-muted-foreground focus-visible:ring-ring shrink-0 cursor-pointer rounded-full focus-visible:ring-2 focus-visible:outline-none"
             @click="model = ''"
-        />
+        >
+            <IconX class="size-4" aria-hidden="true" />
+        </button>
     </div>
 </template>

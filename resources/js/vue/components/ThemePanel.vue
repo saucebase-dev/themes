@@ -19,9 +19,11 @@ import {
 } from '@/components/ui/tooltip';
 
 import IconChevronDown from '~icons/lucide/chevron-down';
+import IconPaintbrush from '~icons/lucide/paintbrush';
 import IconPalette from '~icons/lucide/palette';
 import IconRotateCcw from '~icons/lucide/rotate-ccw';
 import IconSave from '~icons/lucide/save';
+import IconTrash from '~icons/lucide/trash-2';
 import IconTerminal from '~icons/lucide/terminal';
 import IconX from '~icons/lucide/x';
 
@@ -32,11 +34,17 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ThemeSelector from '@/components/ThemeSelector.vue';
-import { computed, reactive, ref, watch } from 'vue';
-import type { FieldState, Font, Theme } from '../types';
+import {
+    isRevealing,
+    revealTransition,
+    type RevealOrigin,
+} from '@saucebase/core/lib/themeReveal';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
+import type { FieldState, Font, Theme } from '../../types';
 
-import { useDialog } from '@/composables/useDialog';
-import { useHttp, usePage } from '@inertiajs/vue3';
+import { useDialog } from '@saucebase/vue/composables/useDialog';
+import { useHttp } from '@saucebase/vue/composables/useHttp';
+import { router, usePage } from '@inertiajs/vue3';
 import { useColorMode } from '@vueuse/core';
 import { trans } from 'laravel-vue-i18n';
 import { toast } from 'vue-sonner';
@@ -53,14 +61,21 @@ import {
     applyFieldToDom,
     applyThemeVars,
     clearThemeOverrides,
-    computeRadiusScale,
     computeShadows,
-    computeTrackingScale,
-    parseFontName,
+    readCssVar,
     setProperty,
-} from '../utils/theme';
+} from '../../lib/theme';
 
-import { themeFields } from '../fields';
+import { themeFields } from '../../lib/fields';
+import {
+    fieldValueFromTheme,
+    isPerMode,
+    modeEdits,
+    shadowArgs,
+    SIDEBAR_SYNC_MAP,
+    sidebarInSync,
+    themeToJson,
+} from '../../lib/panel';
 
 // ── Page props ────────────────────────────────────────────────────────────────
 
@@ -77,9 +92,11 @@ const http = useHttp({
 });
 const colorMode = useColorMode({ storageKey: 'appearance' });
 const isDark = computed(() => colorMode.value === 'dark');
-const { confirm } = useDialog();
+const { confirm, isOpen: isConfirming } = useDialog();
 
 const themesEnabled = computed(() => page.props?.themes != null);
+const canSave = computed(() => page.props?.themes?.canSave === true);
+const canApply = computed(() => page.props?.themes?.canApply === true);
 
 const themes = computed<Theme[]>(() => page.props?.themes?.items ?? []);
 const fontOptions = computed<Record<string, Font[]>>(() => ({
@@ -118,67 +135,42 @@ function setTheme(id: string): void {
     }
 }
 
-async function selectTheme(id: string): Promise<void> {
+/** Switch themes with the same circle reveal as the light/dark switcher. */
+async function selectTheme(
+    id: string,
+    origin: RevealOrigin | null = null,
+): Promise<void> {
     if (id === selectedThemeId.value) {
         return;
     }
 
-    clearThemeOverrides();
-
-    if (
-        !document.startViewTransition ||
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    ) {
-        setTheme(id);
-        return;
-    }
-
-    const x = window.innerWidth / 2;
-    const y = window.innerHeight / 2;
-    const endRadius = Math.hypot(
-        Math.max(x, window.innerWidth - x),
-        Math.max(y, window.innerHeight - y),
-    );
-
-    const ripple = document.createElement('div');
-    ripple.style.cssText = `position:fixed;border-radius:50%;pointer-events:none;z-index:99998;left:${x}px;top:${y}px;width:0;height:0;transform:translate(-50%,-50%);background:color-mix(in oklch,var(--foreground) 25%,transparent);filter:blur(40px)`;
-    document.body.appendChild(ripple);
-    const diameter = endRadius * 2;
-    ripple.animate(
-        [
-            { width: '0', height: '0', opacity: '0.7' },
-            { width: `${diameter}px`, height: `${diameter}px`, opacity: '0' },
-        ],
-        { duration: 600, easing: 'ease-out' },
-    ).onfinish = () => ripple.remove();
-
     const target = themes.value.find((t) => t.id === id) ?? null;
-    applyThemeVars(target, document.documentElement.classList.contains('dark'));
 
-    setTheme(id);
+    await revealTransition(origin, async () => {
+        applyThemeVars(target, isDark.value);
+        setTheme(id);
+        await nextTick();
+    });
+}
 
-    document.documentElement.animate(
-        {
-            clipPath: [
-                `circle(0px at ${x}px ${y}px)`,
-                `circle(${endRadius}px at ${x}px ${y}px)`,
-            ],
-        },
-        {
-            duration: 800,
-            easing: 'ease-in-out',
-            pseudoElement: '::view-transition-new(root)',
-        },
-    );
+/**
+ * Clicks that are not really "outside" the panel: during a reveal the transition
+ * layer sits above everything, so a click lands on <html>; and a confirm dialog
+ * opened from the panel sits outside it.
+ */
+function keepOpenWhileRevealing(event: Event): void {
+    if (isRevealing() || isConfirming.value) {
+        event.preventDefault();
+    }
 }
 
 // ── Fields with values ────────────────────────────────────────────────────────
 
 const fields = reactive<FieldState[]>(
-    themeFields().map((f) => ({ ...f, value: '' })),
+    themeFields(trans).map((f) => ({ ...f, value: '' })),
 );
 
-const uniqueGroups = themeFields()
+const uniqueGroups = themeFields(trans)
     .filter((f) => f.group)
     .map((f) => f.group!)
     .filter((g, i, arr) => arr.findIndex((x) => x.name === g.name) === i);
@@ -206,45 +198,18 @@ const modeColorEdits = reactive<
 // Snapshot of field values as loaded from the theme — used to detect live edits.
 const originalValues = ref<Record<string, string>>({});
 
-function getCssVar(cssVar: string): string {
-    if (typeof document === 'undefined') return '';
-    return getComputedStyle(document.documentElement)
-        .getPropertyValue(cssVar)
-        .trim();
-}
-
 function populateFieldsFromTheme(theme: Theme): void {
     for (const field of fields) {
-        // Non-color fields (font, unit) are mode-agnostic — always read from light
-        const sourceVars =
-            field.type === 'color'
-                ? isDark.value
-                    ? theme.dark
-                    : theme.light
-                : theme.light;
-        // Fall back to the computed CSS value (stylesheet default) when the theme
-        // JSON doesn't define the var (e.g. --font-serif on the default theme).
-        const raw = sourceVars[field.vars[0]] || getCssVar(field.vars[0]);
-        if (field.type === 'font') {
-            field.value = parseFontName(raw);
-        } else if (field.type === 'unit') {
-            // SliderInput expects a plain number string — strip the CSS unit
-            field.value = String(parseFloat(raw) || 0);
-        } else {
-            field.value = raw;
-        }
+        field.value = fieldValueFromTheme(
+            field,
+            theme,
+            isDark.value,
+            readCssVar,
+        );
     }
-    // Detect actual sidebar sync state from loaded values — never force-apply sync.
-    // This prevents sidebar values from being overwritten with surface values on load.
-    const allSidebarSynced = SIDEBAR_SYNC_MAP.every(
-        ([sidebarKey, sourceKey]) => {
-            const s = fields.find((f) => f.key === sidebarKey);
-            const src = fields.find((f) => f.key === sourceKey);
-            return (
-                s?.value !== '' && src?.value !== '' && s?.value === src?.value
-            );
-        },
-    );
+    // Detect the sidebar's link state from the loaded values; never force it, or
+    // sidebar colours would be overwritten with the surface colours on load.
+    const allSidebarSynced = sidebarInSync(fields);
     for (const f of fields) {
         if (f.key.startsWith('sidebar') && f.type === 'color')
             fieldSynced[f.key] = allSidebarSynced;
@@ -261,30 +226,19 @@ watch(isDark, (dark) => {
     const leavingMode = dark ? 'light' : 'dark';
     const enteringMode = dark ? 'dark' : 'light';
 
-    // The theme's canonical color values for each mode.
+    // The theme's canonical values for the mode being left.
     const leavingThemeVars =
         (dark ? currentTheme.value?.light : currentTheme.value?.dark) ?? {};
-    const enteringThemeVars =
-        (dark ? currentTheme.value?.dark : currentTheme.value?.light) ?? {};
 
-    // Save only genuine user edits for the leaving mode — values that differ from
-    // the theme's canonical color. Saving all field values would pollute the cache
-    // when the component starts in dark mode (field.value already holds dark colors).
-    for (const field of fields) {
-        if (field.type !== 'color' || field.value === '') continue;
-        const themeDefault = leavingThemeVars[field.vars[0]];
-        if (themeDefault === undefined || field.value !== themeDefault) {
-            modeColorEdits[leavingMode][field.key] = field.value;
-        } else {
-            delete modeColorEdits[leavingMode][field.key];
-        }
-    }
+    // Keep only genuine edits for the leaving mode. Saving every value would pollute
+    // the cache when the panel starts in dark mode (values already hold dark colours).
+    modeColorEdits[leavingMode] = modeEdits(fields, leavingThemeVars);
 
     applyThemeVars(currentTheme.value, dark);
 
     for (const field of fields) {
-        // Non-color fields are mode-agnostic — always re-apply.
-        if (field.type !== 'color' && field.value !== '') {
+        // Mode-agnostic fields — always re-apply.
+        if (!isPerMode(field) && field.value !== '') {
             applyFieldToDom(field, String(field.value));
         }
 
@@ -295,20 +249,21 @@ watch(isDark, (dark) => {
             continue;
         }
 
-        if (field.type === 'color') {
+        if (isPerMode(field)) {
             const savedEdit = modeColorEdits[enteringMode][field.key];
             if (savedEdit !== undefined) {
                 // Restore the user's live edit for this mode.
                 field.value = savedEdit;
                 applyFieldToDom(field, savedEdit);
-            } else {
-                // No user edit — sync field.value to the entering mode's theme value
-                // so the UI shows the correct mode-specific color.
-                const themeDefault = enteringThemeVars[field.vars[0]];
-                if (
-                    themeDefault !== undefined &&
-                    field.value !== themeDefault
-                ) {
+            } else if (currentTheme.value) {
+                // No user edit — show the entering mode's own value.
+                const themeDefault = fieldValueFromTheme(
+                    field,
+                    currentTheme.value,
+                    dark,
+                    readCssVar,
+                );
+                if (field.value !== themeDefault) {
                     field.value = themeDefault;
                 }
             }
@@ -363,34 +318,10 @@ for (const field of fields) {
 // ── Shadow computed vars ──────────────────────────────────────────────────────
 
 function applyShadowVars(): void {
-    const color = fields.find((f) => f.key === 'shadow-color')?.value;
-    if (!color) return;
+    const args = shadowArgs(fields);
+    if (!args) return;
 
-    const opacity = parseFloat(
-        fields.find((f) => f.key === 'shadow-opacity')?.value ?? '0.2',
-    );
-    const blur = parseFloat(
-        fields.find((f) => f.key === 'shadow-blur')?.value ?? '30',
-    );
-    const spread = parseFloat(
-        fields.find((f) => f.key === 'shadow-spread')?.value ?? '-10',
-    );
-    const offsetX = parseFloat(
-        fields.find((f) => f.key === 'shadow-offset-x')?.value ?? '0',
-    );
-    const offsetY = parseFloat(
-        fields.find((f) => f.key === 'shadow-offset-y')?.value ?? '1',
-    );
-
-    const shadows = computeShadows(
-        color,
-        opacity,
-        blur,
-        spread,
-        offsetX,
-        offsetY,
-    );
-    for (const [key, value] of Object.entries(shadows)) {
+    for (const [key, value] of Object.entries(computeShadows(...args))) {
         setProperty(key, value);
     }
 }
@@ -472,7 +403,9 @@ async function save(): Promise<void> {
             originalValues.value = Object.fromEntries(
                 fields.map((f) => [f.key, f.value]),
             );
-            toast.success(trans('Theme updated successfully'));
+            toast.success(trans('Theme updated successfully'), {
+                testId: 'theme-updated-toast',
+            });
         },
         onError() {
             toast.error(trans('Failed to update theme'));
@@ -480,152 +413,85 @@ async function save(): Promise<void> {
     });
 }
 
+// ── Delete (saved presets only) ──────────────────────────────────────────────
+
+async function remove(): Promise<void> {
+    const theme = currentTheme.value;
+    if (!theme?.editable) return;
+
+    const ok = await confirm({
+        title: trans('Delete theme'),
+        description: trans('This saved theme will be deleted permanently.'),
+        confirmLabel: trans('Delete'),
+        cancelLabel: trans('Cancel'),
+        variant: 'destructive',
+        icon: IconTrash,
+    });
+    if (!ok) return;
+
+    await http.delete(route('themes.destroy', { name: theme.id }), {
+        onSuccess() {
+            selectTheme(defaultThemeId.value);
+            router.reload({ only: ['themes'] });
+            toast.success(trans('Theme deleted'), {
+                testId: 'theme-deleted-toast',
+            });
+        },
+        onError() {
+            toast.error(trans('Failed to delete theme'));
+        },
+    });
+}
+
+// ── Set as default (local only) ──────────────────────────────────────────────
+
+async function apply(): Promise<void> {
+    const ok = await confirm({
+        title: trans('Set as default'),
+        description: trans(
+            'Everyone will see this theme by default. Commit the change to keep it.',
+        ),
+        confirmLabel: trans('Set as default'),
+        cancelLabel: trans('Cancel'),
+        icon: IconPaintbrush,
+    });
+    if (!ok) return;
+
+    http.cssVars = toJson(currentTheme.value?.name ?? '').cssVars;
+
+    await http.post(route('themes.apply'), {
+        onSuccess() {
+            // Default now holds these values; show it as the current theme.
+            router.reload({
+                only: ['themes'],
+                onSuccess: () => {
+                    originalValues.value = Object.fromEntries(
+                        fields.map((f) => [f.key, f.value]),
+                    );
+                    selectTheme(defaultThemeId.value);
+                    toast.success(trans('Theme set as default'), {
+                        testId: 'theme-default-set-toast',
+                    });
+                },
+            });
+        },
+        onError() {
+            toast.error(trans('Failed to set theme as default'));
+        },
+    });
+}
+
 // ── Save as JSON ──────────────────────────────────────────────────────────────
 
 function toJson(inputName: string) {
-    const theme: Record<string, string> = {};
-    const light: Record<string, string> = {};
-    const dark: Record<string, string> = {};
-
-    // Strip '--' prefix for shadcn format
-    const stripPrefix = (v: string) => (v.startsWith('--') ? v.slice(2) : v);
-
-    for (const field of fields) {
-        if (
-            field.value === '' ||
-            field.value === null ||
-            field.value === undefined
-        )
-            continue;
-
-        if (field.type === 'color') {
-            const isSynced = fieldSynced[field.key];
-            if (isSynced) {
-                // Cross-mode sync: write current value to both modes
-                for (const target of [light, dark]) {
-                    for (const v of field.vars) {
-                        target[stripPrefix(v)] = field.value;
-                    }
-                }
-            } else {
-                // Current mode: write the user's (possibly edited) value
-                const currentTarget = isDark.value ? dark : light;
-                for (const v of field.vars) {
-                    currentTarget[stripPrefix(v)] = field.value;
-                }
-
-                // Other mode: preserve the base theme's untouched value
-                const otherTarget = isDark.value ? light : dark;
-                const otherSource = isDark.value
-                    ? currentTheme.value?.light
-                    : currentTheme.value?.dark;
-                for (const v of field.vars) {
-                    const val = otherSource?.[v];
-                    if (val) otherTarget[stripPrefix(v)] = val;
-                }
-            }
-        } else if (field.type === 'unit') {
-            const unit = field.props?.unit ?? 'rem';
-            const valueWithUnit = `${field.value}${unit}`;
-            if (field.perMode) {
-                // Per-mode unit (e.g. shadow-opacity): write to light/dark like a color field
-                const isSynced = fieldSynced[field.key];
-                if (isSynced) {
-                    for (const target of [light, dark]) {
-                        for (const v of field.vars)
-                            target[stripPrefix(v)] = valueWithUnit;
-                    }
-                } else {
-                    const currentTarget = isDark.value ? dark : light;
-                    for (const v of field.vars)
-                        currentTarget[stripPrefix(v)] = valueWithUnit;
-                    const otherTarget = isDark.value ? light : dark;
-                    const otherSource = isDark.value
-                        ? currentTheme.value?.light
-                        : currentTheme.value?.dark;
-                    for (const v of field.vars) {
-                        const val = otherSource?.[v];
-                        if (val) otherTarget[stripPrefix(v)] = val;
-                    }
-                }
-            } else {
-                // Mode-agnostic — write to theme section
-                for (const v of field.vars)
-                    theme[stripPrefix(v)] = valueWithUnit;
-            }
-        } else if (field.type === 'font') {
-            // Font fields are mode-agnostic — write to theme section
-            const fallback = field.vars[0]?.includes('mono')
-                ? 'monospace'
-                : field.vars[0]?.includes('serif')
-                  ? 'serif'
-                  : 'sans-serif';
-            const cssValue = `"${field.value}", ${fallback}`;
-            for (const v of field.vars) {
-                theme[stripPrefix(v)] = cssValue;
-            }
-        } else if (field.type === 'select') {
-            // Select fields are mode-agnostic — write to theme section
-            for (const v of field.vars) theme[stripPrefix(v)] = field.value;
-        }
-    }
-
-    // Append computed scale values to the theme section
-    const radiusField = fields.find((f) => f.key === 'radius');
-    if (radiusField?.value && radiusField.type === 'unit') {
-        const radiusVal = `${radiusField.value}${radiusField.props?.unit ?? 'rem'}`;
-        for (const [k, v] of Object.entries(computeRadiusScale(radiusVal))) {
-            theme[stripPrefix(k)] = v;
-        }
-    }
-
-    const trackingField = fields.find((f) => f.key === 'tracking-normal');
-    if (trackingField?.value) {
-        for (const [k, v] of Object.entries(
-            computeTrackingScale(parseFloat(trackingField.value)),
-        )) {
-            theme[stripPrefix(k)] = v;
-        }
-    }
-
-    // Shadow strings for light mode stored in theme section
-    const shadowColorLight =
-        light['shadow-color'] ?? currentTheme.value?.light['--shadow-color'];
-    const shadowOpacityLight = parseFloat(
-        light['shadow-opacity'] ??
-            currentTheme.value?.light['--shadow-opacity'] ??
-            '0.2',
-    );
-    const shadowBlur = parseFloat(theme['shadow-blur'] ?? '30');
-    const shadowSpread = parseFloat(theme['shadow-spread'] ?? '-10');
-    const shadowOffsetX = parseFloat(theme['shadow-offset-x'] ?? '0');
-    const shadowOffsetY = parseFloat(theme['shadow-offset-y'] ?? '1');
-    if (shadowColorLight) {
-        for (const [k, v] of Object.entries(
-            computeShadows(
-                shadowColorLight,
-                shadowOpacityLight,
-                shadowBlur,
-                shadowSpread,
-                shadowOffsetX,
-                shadowOffsetY,
-            ),
-        )) {
-            theme[stripPrefix(k)] = v;
-        }
-    }
-
-    const name = inputName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-
-    return {
-        name,
-        title: inputName,
-        description: '',
-        cssVars: { theme, light, dark },
-    };
+    return themeToJson({
+        fields,
+        synced: fieldSynced,
+        isDark: isDark.value,
+        base: currentTheme.value,
+        name: inputName,
+        otherModeEdits: modeColorEdits[isDark.value ? 'light' : 'dark'],
+    });
 }
 
 // When per-field sync is toggled on: snapshot current value into cache.
@@ -647,17 +513,6 @@ watch(
 );
 
 // ── Sidebar sync ─────────────────────────────────────────────────────────────
-
-const SIDEBAR_SYNC_MAP: [string, string][] = [
-    ['sidebar', 'background'],
-    ['sidebar-foreground', 'foreground'],
-    ['sidebar-primary', 'primary'],
-    ['sidebar-primary-foreground', 'primary-foreground'],
-    ['sidebar-accent', 'accent'],
-    ['sidebar-accent-foreground', 'accent-foreground'],
-    ['sidebar-border', 'border'],
-    ['sidebar-ring', 'ring'],
-];
 
 const sidebarSynced = ref<boolean | null>(false);
 
@@ -826,6 +681,7 @@ const dialogCommandOpen = ref(false);
                 side="right"
                 class="flex flex-col gap-0 p-0 shadow-2xl sm:w-105 sm:max-w-none [&>button:last-child]:hidden"
                 overlay-class="bg-black/5 blur-sm"
+                @interact-outside="keepOpenWhileRevealing"
             >
                 <TooltipProvider>
                     <SheetTitle class="sr-only">
@@ -873,7 +729,7 @@ const dialogCommandOpen = ref(false);
                         <ThemePicker
                             :options="themes"
                             :model-value="selectedThemeId"
-                            @update:model-value="selectTheme"
+                            @picked="selectTheme"
                         />
 
                         <!-- Config-driven fields -->
@@ -905,7 +761,7 @@ const dialogCommandOpen = ref(false);
                                         >
                                             <span
                                                 class="text-foreground text-xs font-bold tracking-wider uppercase"
-                                                >{{ $t(section.name) }}</span
+                                                >{{ section.name }}</span
                                             >
                                             <div
                                                 class="relative flex items-center gap-2"
@@ -913,7 +769,7 @@ const dialogCommandOpen = ref(false);
                                                 <LinkToggle
                                                     v-if="
                                                         section.name ===
-                                                        'Sidebar'
+                                                        $t('Sidebar')
                                                     "
                                                     v-model="sidebarSynced"
                                                     :tooltip="
@@ -977,7 +833,7 @@ const dialogCommandOpen = ref(false);
                                                     <p
                                                         class="text-muted-foreground px-0.5 text-xs font-medium"
                                                     >
-                                                        {{ $t(field.label) }}
+                                                        {{ field.label }}
                                                     </p>
                                                     <div
                                                         class="border-border flex overflow-hidden rounded-md border"
@@ -1004,9 +860,7 @@ const dialogCommandOpen = ref(false);
                                                                     option.value
                                                             "
                                                         >
-                                                            {{
-                                                                $t(option.label)
-                                                            }}
+                                                            {{ option.label }}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1019,7 +873,7 @@ const dialogCommandOpen = ref(false);
                                                     <p
                                                         class="text-muted-foreground px-0.5 text-xs font-medium"
                                                     >
-                                                        {{ $t(field.label) }}
+                                                        {{ field.label }}
                                                     </p>
                                                     <FontPicker
                                                         :fonts="
@@ -1035,14 +889,14 @@ const dialogCommandOpen = ref(false);
                                                     v-else-if="
                                                         field.type === 'unit'
                                                     "
-                                                    :label="$t(field.label)"
+                                                    :label="field.label"
                                                     :test-id="`slider-input-${field.key}`"
                                                     v-model="field.value"
                                                     v-bind="field.props"
                                                 />
                                                 <ColorInput
                                                     v-else
-                                                    :label="$t(field.label)"
+                                                    :label="field.label"
                                                     :test-id="`color-input-${field.key}`"
                                                     v-model="field.value"
                                                     v-model:synced="
@@ -1082,6 +936,21 @@ const dialogCommandOpen = ref(false);
                     <!-- Footer -->
                     <div class="border-border bg-background/20 border-t p-3">
                         <div class="flex gap-2">
+                            <Tooltip v-if="canSave && currentTheme?.editable">
+                                <TooltipTrigger as-child>
+                                    <button
+                                        data-testid="theme-panel-delete"
+                                        :aria-label="$t('Delete theme')"
+                                        class="border-border text-destructive hover:bg-destructive/10 focus-visible:ring-ring flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                        @click="remove"
+                                    >
+                                        <IconTrash class="size-4" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    {{ $t('Delete theme') }}
+                                </TooltipContent>
+                            </Tooltip>
                             <button
                                 data-testid="theme-panel-reset"
                                 :disabled="!canReset"
@@ -1091,29 +960,37 @@ const dialogCommandOpen = ref(false);
                                 <IconRotateCcw class="size-4" />
                                 {{ $t('Reset') }}
                             </button>
-                            <!-- Split button: custom theme → Save + dropdown; built-in → Save as only -->
-                            <div
-                                v-if="currentTheme?.editable"
-                                class="border-border flex flex-1 overflow-hidden rounded-lg border"
+                            <button
+                                v-if="canApply"
+                                data-testid="theme-panel-apply"
+                                class="border-border hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                @click="apply"
                             >
-                                <button
-                                    data-testid="theme-panel-save"
-                                    class="hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 items-center justify-center gap-2 px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
-                                    @click="save"
+                                <IconPaintbrush class="size-4" />
+                                {{ $t('Set as default') }}
+                            </button>
+                            <!-- Custom theme → Save / Save as menu; built-in → Save as only -->
+                            <template v-if="canSave">
+                                <DropdownMenu
+                                    v-if="currentTheme?.editable"
+                                    :modal="false"
                                 >
-                                    <IconSave class="size-4" />
-                                    {{ $t('Save') }}
-                                </button>
-                                <DropdownMenu :modal="false">
                                     <DropdownMenuTrigger as-child>
                                         <button
                                             data-testid="theme-panel-save-dropdown"
-                                            class="hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring border-border border-l px-2 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                            :aria-label="$t('Save')"
+                                            class="border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none"
                                         >
-                                            <IconChevronDown class="size-3.5" />
+                                            <IconSave class="size-4" />
                                         </button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            data-testid="theme-panel-save"
+                                            @click="save"
+                                        >
+                                            {{ $t('Save') }}
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem
                                             data-testid="theme-panel-save-as"
                                             @click="dialogSaveOpen = true"
@@ -1122,22 +999,27 @@ const dialogCommandOpen = ref(false);
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
-                            </div>
-                            <button
-                                v-else
-                                data-testid="theme-panel-save-as"
-                                class="border-border hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
-                                @click="dialogSaveOpen = true"
-                            >
-                                <IconSave class="size-4" />
-                                {{ $t('Save as') }}
-                            </button>
-                            <Tooltip>
+                                <Tooltip v-else>
+                                    <TooltipTrigger as-child>
+                                        <button
+                                            data-testid="theme-panel-save-as"
+                                            class="border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                            @click="dialogSaveOpen = true"
+                                        >
+                                            <IconSave class="size-4" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        {{ $t('Save as') }}
+                                    </TooltipContent>
+                                </Tooltip>
+                            </template>
+                            <Tooltip v-if="!canApply">
                                 <TooltipTrigger as-child>
                                     <button
                                         data-testid="theme-panel-command"
                                         :disabled="isDefault(selectedThemeId)"
-                                        class="border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex items-center justify-center rounded-lg border px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                        class="border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                         @click="dialogCommandOpen = true"
                                     >
                                         <IconTerminal class="size-4" />

@@ -2,8 +2,8 @@
 
 namespace Modules\Themes\Tests\Feature;
 
-use App\Services\FrontendConfig;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Saucebase\Core\ProjectConfig;
 use Tests\TestCase;
 
 class ThemesConfigTest extends TestCase
@@ -16,9 +16,14 @@ class ThemesConfigTest extends TestCase
     {
         parent::setUp();
         $this->storageDir = storage_path('app/themes');
+        config(['themes.writable' => true]);
 
-        app()->bind(FrontendConfig::class, fn () => new class extends FrontendConfig {
-            public function getFramework(): ?string { return 'vue'; }
+        app()->bind(ProjectConfig::class, fn () => new class extends ProjectConfig
+        {
+            public function getFramework(): string
+            {
+                return 'vue';
+            }
         });
     }
 
