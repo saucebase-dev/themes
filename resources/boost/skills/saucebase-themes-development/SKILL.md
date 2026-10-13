@@ -68,6 +68,11 @@ ThemePanel            ←  previews via inline CSS var overrides (applyThemeVars
 
 `saucebase:theme:apply {id}` calls the same `ThemeService::applyToCss()` (it does not touch `default.json`).
 
+The panel writes font names quoted and both modes' shadow scales, and `default.json` and core's
+`theme.css` ship in that same form, so applying the default over itself would change nothing. The
+button is disabled then (default selected, no edits) and the route answers 422. `panel.test.ts`
+fails if the shipped default stops matching what the panel writes.
+
 ### JSON theme structure
 
 Three sections per theme:

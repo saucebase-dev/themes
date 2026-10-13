@@ -963,7 +963,8 @@ const dialogCommandOpen = ref(false);
                             <button
                                 v-if="canApply"
                                 data-testid="theme-panel-apply"
-                                class="border-border hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                                :disabled="!canReset"
+                                class="border-border hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                 @click="apply"
                             >
                                 <IconPaintbrush class="size-4" />

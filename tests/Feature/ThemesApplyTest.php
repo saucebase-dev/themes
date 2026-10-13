@@ -74,6 +74,22 @@ class ThemesApplyTest extends TestCase
         ]];
     }
 
+    public function test_applying_the_default_theme_to_itself_is_refused_and_changes_nothing(): void
+    {
+        $this->actLocally();
+        @unlink($this->backupJsonPath);
+
+        $stored = json_decode($this->originalDefaultJson, true)['cssVars'];
+
+        $this->postJson(route('themes.apply'), ['cssVars' => $stored])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'This theme is already the default.');
+
+        $this->assertSame($this->originalCss, file_get_contents($this->themeCssPath));
+        $this->assertSame($this->originalDefaultJson, file_get_contents($this->defaultJsonPath));
+        $this->assertFileDoesNotExist($this->backupJsonPath);
+    }
+
     public function test_apply_does_not_exist_outside_local(): void
     {
         $this->postJson(route('themes.apply'), $this->payload())->assertNotFound();
@@ -205,6 +221,9 @@ class ThemesApplyTest extends TestCase
         $payload['cssVars']['light']['font-sans'] = '"$0 Sans", sans-serif';
 
         $this->postJson(route('themes.apply'), $payload)->assertOk();
+
+        // Written over itself: the value already in the file must not be read as a pattern either.
+        $payload['cssVars']['theme']['radius'] = '1rem';
         $this->postJson(route('themes.apply'), $payload)->assertOk();
 
         $this->assertStringContainsString('--font-sans: "$0 Sans", sans-serif;', (string) file_get_contents($this->themeCssPath));

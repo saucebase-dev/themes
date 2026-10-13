@@ -465,6 +465,16 @@ test.describe('Set as default', () => {
         await laravel.callFunction(`${HELPER}::restoreDefault`);
     });
 
+    test('is only offered when there is something to set', async ({ page }) => {
+        await openPanel(page);
+
+        // The default theme, untouched: setting it would write the files it came from.
+        await expect(page.getByTestId('theme-panel-apply')).toBeDisabled();
+
+        await pickTheme(page, 'coffee');
+        await expect(page.getByTestId('theme-panel-apply')).toBeEnabled();
+    });
+
     test('makes the current theme the Default entry', async ({ page }) => {
         await openPanel(page);
         await pickTheme(page, 'coffee');

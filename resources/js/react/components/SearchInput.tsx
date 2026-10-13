@@ -28,6 +28,7 @@ export default function SearchInput({
                 onChange={(e) => onChange(e.target.value)}
                 type="text"
                 placeholder={placeholder}
+                aria-label={placeholder ?? t('Search')}
                 data-testid={testId}
                 className="text-foreground placeholder:text-muted-foreground flex-1 border-none bg-transparent text-sm ring-0 outline-none"
             />

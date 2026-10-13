@@ -215,6 +215,20 @@ class ThemeService
     }
 
     /**
+     * Whether applying these vars would leave the default theme as it is.
+     *
+     * @param  array{theme?: array<string, string>, light?: array<string, string>, dark?: array<string, string>}  $cssVars
+     */
+    public static function isDefault(array $cssVars): bool
+    {
+        /** @var array<string, mixed> $default */
+        $default = json_decode((string) file_get_contents(static::getBundleThemePath('default')), true);
+        $stored = $default['cssVars'] ?? [];
+
+        return array_replace_recursive($stored, $cssVars) === $stored;
+    }
+
+    /**
      * Make `cssVars` the shipped "default" theme, so the picker's Default entry keeps
      * matching theme.css. The replaced file is kept as storage/app/themes/default.json.backup:
      * the picker ignores it, and outside resources/ the Vite dev server doesn't reload the

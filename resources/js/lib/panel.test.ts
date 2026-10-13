@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import defaultTheme from '../../themes/default.json';
 import type { FieldState } from '../types';
 import { themeFields } from './fields';
 import {
@@ -31,6 +32,38 @@ describe('themeSlug', () => {
 });
 
 describe('themeToJson', () => {
+    // Set as default merges the payload into default.json, so a payload that only
+    // repeats what is stored leaves the file, and theme.css with it, untouched.
+    it('writes the shipped default theme back unchanged', () => {
+        const { theme, light, dark } = defaultTheme.cssVars;
+        const prefixed = (vars: Record<string, string>) =>
+            Object.fromEntries(
+                Object.entries(vars).map(([key, value]) => [`--${key}`, value]),
+            );
+        const stored = {
+            light: prefixed({ ...theme, ...light }),
+            dark: prefixed({ ...theme, ...dark }),
+        };
+
+        const { cssVars } = themeToJson({
+            fields: themeFields().map((field) => ({
+                ...field,
+                value: fieldValueFromTheme(
+                    { ...field, value: '' },
+                    stored,
+                    false,
+                    () => '',
+                ),
+            })),
+            synced: {},
+            isDark: false,
+            base: stored,
+            name: 'Default',
+        });
+
+        expect(defaultTheme.cssVars).toMatchObject(cssVars);
+    });
+
     it('keeps the name as the title and slugs the id', () => {
         const json = themeToJson({
             fields: fieldsWith({}),

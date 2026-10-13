@@ -147,3 +147,27 @@ export function swatchBackground(color: string): string {
 export function clamp(v: number, lo: number, hi: number): number {
     return Math.max(lo, Math.min(hi, v));
 }
+
+/**
+ * Where an arrow key moves the colour area's handle: left and right change the
+ * saturation, up and down the brightness, as a drag does. Null for any other key.
+ */
+export function nudgeColorArea(
+    s: number,
+    v: number,
+    key: string,
+    big = false,
+): { s: number; v: number } | null {
+    const step = big ? 10 : 1;
+    const moves: Record<string, [number, number]> = {
+        ArrowLeft: [-step, 0],
+        ArrowRight: [step, 0],
+        ArrowUp: [0, step],
+        ArrowDown: [0, -step],
+    };
+    const move = moves[key];
+
+    return move
+        ? { s: clamp(s + move[0], 0, 100), v: clamp(v + move[1], 0, 100) }
+        : null;
+}
