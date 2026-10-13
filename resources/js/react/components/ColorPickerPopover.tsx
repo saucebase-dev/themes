@@ -209,7 +209,7 @@ export default function ColorPickerPopover({
                             tabIndex={0}
                             aria-label={t('Saturation and brightness')}
                             aria-valuenow={Math.round(hsv.s)}
-                            aria-valuetext={hex}
+                            aria-valuetext={`${Math.round(hsv.s)}%, ${Math.round(hsv.v)}%, ${hex}`}
                             className="focus-visible:ring-ring relative h-40 w-full cursor-crosshair select-none focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
                             style={{ background: `hsl(${hsv.h}, 100%, 50%)` }}
                             onMouseDown={startDrag}

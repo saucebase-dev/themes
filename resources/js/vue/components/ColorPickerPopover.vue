@@ -237,7 +237,7 @@ function selectTailwind(hex: string) {
                     tabindex="0"
                     :aria-label="$t('Saturation and brightness')"
                     :aria-valuenow="Math.round(saturation)"
-                    :aria-valuetext="currentHex"
+                    :aria-valuetext="`${Math.round(saturation)}%, ${Math.round(brightness)}%, ${currentHex}`"
                     class="focus-visible:ring-ring relative h-40 w-full cursor-crosshair select-none focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
                     :style="{ background: hueHsl }"
                     @mousedown="startDrag"
