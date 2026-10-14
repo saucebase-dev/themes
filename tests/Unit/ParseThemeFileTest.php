@@ -122,7 +122,10 @@ class ParseThemeFileTest extends TestCase
 
     public function test_new_format_falls_back_title_to_filename(): void
     {
-        $path = sys_get_temp_dir().'/mythemefile.json';
+        // Its own folder: the file name is what's under test, and a shared /tmp path collides with another run.
+        $dir = sys_get_temp_dir().'/'.uniqid('theme_');
+        mkdir($dir);
+        $path = $dir.'/mythemefile.json';
         file_put_contents($path, json_encode([
             'name' => 'mythemefile',
             'cssVars' => ['theme' => [], 'light' => [], 'dark' => []],
@@ -134,6 +137,7 @@ class ParseThemeFileTest extends TestCase
         $this->assertSame('Mythemefile', $result['name']);
 
         unlink($path);
+        rmdir($dir);
     }
 
     public function test_missing_name_returns_null(): void
