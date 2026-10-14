@@ -3,7 +3,7 @@
   "description": "Themes module",
   "type": "saucebase-module",
   "license": "proprietary",
-  "version": "v3.2.0",
+  "version": "v3.2.1",
   "require": {
     "saucebase/core": "^1.6"
   },
