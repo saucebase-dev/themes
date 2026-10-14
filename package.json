@@ -1,0 +1,9 @@
+{
+    "name": "@saucebase/themes",
+    "private": true,
+    "type": "module",
+    "devDependencies": {
+        "@iconify-json/fa-solid": "^1.2.2",
+        "@iconify-json/mdi": "^1.2.3"
+    }
+}
