@@ -14,6 +14,7 @@ const model = defineModel<string>({ default: '' });
             v-model="model"
             type="text"
             :placeholder="placeholder"
+            :aria-label="placeholder ?? $t('Search')"
             :data-testid="testId"
             class="text-foreground placeholder:text-muted-foreground flex-1 border-none bg-transparent text-sm ring-0 outline-none"
         />

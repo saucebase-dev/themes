@@ -22,6 +22,7 @@ import {
     clamp,
     colorToHsv,
     hsvToRgb,
+    nudgeColorArea,
     rgbToHex,
     rgbToHsv,
 } from '../../lib/color';
@@ -113,6 +114,20 @@ function startDrag(e: MouseEvent | TouchEvent) {
     });
     window.addEventListener('touchend', onUp);
     cleanupDrag = onUp;
+}
+
+function onAreaKeydown(e: KeyboardEvent) {
+    const next = nudgeColorArea(
+        saturation.value,
+        brightness.value,
+        e.key,
+        e.shiftKey,
+    );
+    if (!next) return;
+    e.preventDefault();
+    saturation.value = next.s;
+    brightness.value = next.v;
+    model.value = currentHex.value;
 }
 
 onUnmounted(() => {
@@ -218,10 +233,16 @@ function selectTailwind(hex: string) {
                 <!-- Gradient picker area -->
                 <div
                     ref="gradientRef"
-                    class="relative h-40 w-full cursor-crosshair select-none"
+                    role="slider"
+                    tabindex="0"
+                    :aria-label="$t('Saturation and brightness')"
+                    :aria-valuenow="Math.round(saturation)"
+                    :aria-valuetext="`${Math.round(saturation)}%, ${Math.round(brightness)}%, ${currentHex}`"
+                    class="focus-visible:ring-ring relative h-40 w-full cursor-crosshair select-none focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
                     :style="{ background: hueHsl }"
                     @mousedown="startDrag"
                     @touchstart.prevent="startDrag"
+                    @keydown="onAreaKeydown"
                 >
                     <div
                         class="pointer-events-none absolute inset-0"
@@ -273,6 +294,7 @@ function selectTailwind(hex: string) {
                             min="0"
                             max="360"
                             :value="hue"
+                            :aria-label="$t('Hue')"
                             class="color-picker-hue-slider flex-1"
                             @input="onHueInput"
                         />
@@ -326,6 +348,7 @@ function selectTailwind(hex: string) {
                                 <Input
                                     type="text"
                                     maxlength="6"
+                                    :aria-label="$t('Hex')"
                                     :model-value="hexInput"
                                     class="text-foreground rounded-none border-0 bg-transparent uppercase tabular-nums shadow-none focus-visible:ring-0 dark:bg-transparent"
                                     @input="onHexChange"

@@ -811,7 +811,8 @@ export default function ThemePanel() {
                                 {canApply && (
                                     <button
                                         data-testid="theme-panel-apply"
-                                        className={footerTextButton}
+                                        disabled={!canReset}
+                                        className={`${footerTextButton} disabled:cursor-not-allowed disabled:opacity-50`}
                                         onClick={apply}
                                     >
                                         <IconPaintbrush className="size-4" />

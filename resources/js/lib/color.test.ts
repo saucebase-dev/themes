@@ -4,6 +4,7 @@ import {
     colorToHsv,
     hexToRgb,
     hsvToRgb,
+    nudgeColorArea,
     rgbToHex,
     rgbToHsv,
     swatchBackground,
@@ -79,5 +80,30 @@ describe('swatchBackground', () => {
         expect(swatchBackground('#ff000080')).toBe(
             'linear-gradient(#ff000080, #ff000080), repeating-conic-gradient(#aaa 0% 25%, white 0% 50%) 0 0 / 8px 8px',
         );
+    });
+});
+
+describe('nudgeColorArea', () => {
+    it('moves saturation with left and right, brightness with up and down', () => {
+        expect(nudgeColorArea(50, 50, 'ArrowRight')).toEqual({ s: 51, v: 50 });
+        expect(nudgeColorArea(50, 50, 'ArrowLeft')).toEqual({ s: 49, v: 50 });
+        expect(nudgeColorArea(50, 50, 'ArrowUp')).toEqual({ s: 50, v: 51 });
+        expect(nudgeColorArea(50, 50, 'ArrowDown')).toEqual({ s: 50, v: 49 });
+    });
+
+    it('takes a bigger step when asked', () => {
+        expect(nudgeColorArea(50, 50, 'ArrowRight', true)).toEqual({
+            s: 60,
+            v: 50,
+        });
+    });
+
+    it('stops at the edges', () => {
+        expect(nudgeColorArea(100, 0, 'ArrowRight')).toEqual({ s: 100, v: 0 });
+        expect(nudgeColorArea(100, 0, 'ArrowDown')).toEqual({ s: 100, v: 0 });
+    });
+
+    it('ignores every other key', () => {
+        expect(nudgeColorArea(50, 50, 'Tab')).toBeNull();
     });
 });

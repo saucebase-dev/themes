@@ -13,9 +13,9 @@
     },
     "cssVars": {
         "theme": {
-            "font-sans": "Outfit, sans-serif",
-            "font-serif": "Source Serif 4, serif",
-            "font-mono": "JetBrains Mono, monospace",
+            "font-sans": "\"Outfit\", sans-serif",
+            "font-serif": "\"Source Serif 4\", serif",
+            "font-mono": "\"JetBrains Mono\", monospace",
             "font-body": "var(--font-sans)",
             "spacing": "0.265rem",
             "tracking-normal": "0em",
@@ -115,7 +115,15 @@
             "sidebar-border": "oklch(0.3843 0.0301 269.7337)",
             "sidebar-ring": "oklch(0.323 0.1656 267.8352)",
             "shadow-color": "hsl(0 0% 0%)",
-            "shadow-opacity": "0.2"
+            "shadow-opacity": "0.2",
+            "shadow-2xs": "0px 1px 30px -10px color-mix(in srgb, hsl(0 0% 0%) 10.0%, transparent)",
+            "shadow-xs": "0px 1px 30px -10px color-mix(in srgb, hsl(0 0% 0%) 10.0%, transparent)",
+            "shadow-sm": "0px 1px 30px -10px color-mix(in srgb, hsl(0 0% 0%) 20.0%, transparent), 0px 1px 2px -11px color-mix(in srgb, hsl(0 0% 0%) 20.0%, transparent)",
+            "shadow": "0px 1px 30px -10px color-mix(in srgb, hsl(0 0% 0%) 20.0%, transparent), 0px 1px 2px -11px color-mix(in srgb, hsl(0 0% 0%) 20.0%, transparent)",
+            "shadow-md": "0px 1px 30px -10px color-mix(in srgb, hsl(0 0% 0%) 20.0%, transparent), 0px 2px 4px -11px color-mix(in srgb, hsl(0 0% 0%) 20.0%, transparent)",
+            "shadow-lg": "0px 1px 30px -10px color-mix(in srgb, hsl(0 0% 0%) 20.0%, transparent), 0px 4px 6px -11px color-mix(in srgb, hsl(0 0% 0%) 20.0%, transparent)",
+            "shadow-xl": "0px 1px 30px -10px color-mix(in srgb, hsl(0 0% 0%) 20.0%, transparent), 0px 8px 10px -11px color-mix(in srgb, hsl(0 0% 0%) 20.0%, transparent)",
+            "shadow-2xl": "0px 1px 30px -10px color-mix(in srgb, hsl(0 0% 0%) 50.0%, transparent)"
         }
     }
 }

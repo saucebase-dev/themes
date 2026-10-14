@@ -29,6 +29,7 @@ import {
     clamp,
     colorToHsv,
     hsvToRgb,
+    nudgeColorArea,
     rgbToHex,
     rgbToHsv,
 } from '../../lib/color';
@@ -204,10 +205,26 @@ export default function ColorPickerPopover({
                         {/* Gradient picker area */}
                         <div
                             ref={gradientRef}
-                            className="relative h-40 w-full cursor-crosshair select-none"
+                            role="slider"
+                            tabIndex={0}
+                            aria-label={t('Saturation and brightness')}
+                            aria-valuenow={Math.round(hsv.s)}
+                            aria-valuetext={`${Math.round(hsv.s)}%, ${Math.round(hsv.v)}%, ${hex}`}
+                            className="focus-visible:ring-ring relative h-40 w-full cursor-crosshair select-none focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
                             style={{ background: `hsl(${hsv.h}, 100%, 50%)` }}
                             onMouseDown={startDrag}
                             onTouchStart={startDrag}
+                            onKeyDown={(e) => {
+                                const next = nudgeColorArea(
+                                    hsv.s,
+                                    hsv.v,
+                                    e.key,
+                                    e.shiftKey,
+                                );
+                                if (!next) return;
+                                e.preventDefault();
+                                commit({ ...hsv, ...next });
+                            }}
                         >
                             <div
                                 className="pointer-events-none absolute inset-0"
@@ -254,6 +271,7 @@ export default function ColorPickerPopover({
                                     min="0"
                                     max="360"
                                     value={hsv.h}
+                                    aria-label={t('Hue')}
                                     className="color-picker-hue-slider flex-1"
                                     onChange={(e) =>
                                         commit({
@@ -309,6 +327,7 @@ export default function ColorPickerPopover({
                                             <Input
                                                 type="text"
                                                 maxLength={6}
+                                                aria-label={t('Hex')}
                                                 value={hexInput}
                                                 className="text-foreground rounded-none border-0 bg-transparent uppercase tabular-nums shadow-none focus-visible:ring-0 dark:bg-transparent"
                                                 onChange={onHexChange}

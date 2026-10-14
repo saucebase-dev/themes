@@ -51,6 +51,10 @@ class ThemesController
     {
         /** @var array{theme?: array<string, string>, light: array<string, string>, dark: array<string, string>} $cssVars */
         $cssVars = $request->validated('cssVars');
+
+        // Nothing to write, and writing anyway would still replace the backup of the previous default.
+        abort_if(ThemeService::isDefault($cssVars), 422, __('This theme is already the default.'));
+
         ThemeService::applyToCss($cssVars);
         ThemeService::replaceDefault($cssVars);
 
