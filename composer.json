@@ -1,11 +1,11 @@
 {
   "name": "saucebase/themes",
-  "description": "Themes module",
+  "description": "A visual theme editor for Saucebase: colours, fonts, radius and shadows, with live preview.",
   "type": "saucebase-module",
   "license": "MIT",
   "version": "v3.2.2",
   "require": {
-    "saucebase/core": "^1.6"
+    "saucebase/core": "^1.13"
   },
   "authors": [
     {

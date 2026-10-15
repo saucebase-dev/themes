@@ -14,7 +14,7 @@ class DemoThemesDatabaseSeeder extends Seeder
         Role::findOrCreate('themes admin')->syncPermissions(['access admin panel', 'manage themes']);
         $staff = User::firstOrCreate(
             ['email' => 'themes@saucebase.dev'],
-            ['name' => 'Themes Admin', 'password' => bcrypt('secretsauce')],
+            ['name' => 'Themes Admin', 'password' => bcrypt(config('saucebase.demo_password'))],
         );
         $staff->syncRoles('themes admin');
     }

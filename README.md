@@ -1,82 +1,73 @@
-# Themes Module
+# Saucebase Themes
 
 <div align="center">
 
 [![Tests](https://github.com/saucebase-dev/themes/actions/workflows/test.yml/badge.svg)](https://github.com/saucebase-dev/themes/actions/workflows/test.yml)
 [![Release](https://img.shields.io/github/v/release/saucebase-dev/themes)](https://github.com/saucebase-dev/themes/releases)
-[![Saucebase Core](https://img.shields.io/badge/Saucebase_Core-1.6+-FF6B35)](https://github.com/saucebase-dev/core)
-[![PHP](https://img.shields.io/badge/PHP-8.4+-777BB4?logo=php&logoColor=white)](https://php.net)
-
-Works with:<br/>
-[![Vue 3.5](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vue.js&logoColor=white)](https://vuejs.org) [![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![Saucebase Core](https://img.shields.io/packagist/dependency-v/saucebase/themes/saucebase%2Fcore?label=Saucebase%20Core&color=FF6B35)](https://github.com/saucebase-dev/core)
+[![License](https://img.shields.io/github/license/saucebase-dev/themes)](LICENSE)
 
 </div>
 
-A visual theme editor for [Saucebase](https://github.com/saucebase-dev/saucebase), a Laravel SaaS starter kit.
+A visual theme editor for Saucebase: colours, fonts, radius and shadows, with live preview.
 
-Design your app's colours, fonts, radius and shadows in the browser, then make it your app's default with one click (or one command in CI). Nothing runs at request time once a theme is applied.
-
-**[Full documentation →](https://saucebase-dev.github.io/docs/modules/themes)**
+A module for [Saucebase](https://github.com/saucebase-dev/saucebase), the AI-ready Laravel SaaS kit. Modules are Composer packages you add to a Saucebase app; once installed, the code is yours to change.
 
 ## Features
 
-- **Theme editor** — a side panel on every page to edit colours, fonts, radius, spacing, letter spacing and shadows, with a live preview
-- **Built-in themes** — 14 ready-made themes, from Default to Blueberry, Coffee and Sushi
-- **Light and dark mode** — every theme defines both, and each field can be linked so it stays the same across modes
-- **Colour picker** — a custom picker with hex and RGB input, the full Tailwind palette, and a screen eyedropper where the browser supports it
-- **Google Fonts** — pick sans, serif and mono fonts from a searchable list; they load on demand while you edit
-- **Shadows and radius** — set a few base values and the full shadow and radius scales are computed for you
-- **Save your themes** — save, update and delete your own themes as JSON files
-- **Bake into CSS** — `php artisan saucebase:theme:apply` writes the theme into `resources/css/theme.css`
+- **Theme editor**: a side panel on every page with a live preview
+- **Built-in themes**, ready to use or start from
+- **Light and dark mode** in every theme
+- **Colour picker** with the Tailwind palette and an eyedropper
+- **Google Fonts**, loaded on demand
+- **Shadow and radius scales** computed from a few base values
+- **Save your own themes** as JSON files
+- **Set as default**: bake a theme into `resources/css/theme.css` from the editor or with `php artisan saucebase:theme:apply <theme>`
+- **Admin theme**: colours, font and radius for the admin panel
+- **Vue and React**
 
-## Requirements
+## Install
 
-|                |               |
-| -------------- | ------------- |
-| Saucebase core | `^1.6`        |
-| Frontend       | Vue or React  |
+**New to Saucebase?** Start a new app and pick **themes** when it asks for modules:
 
-## Installation
+```bash
+curl -fsSL https://install.saucebase.dev | bash
+```
+
+It installs PHP and Composer if they're missing. With the CLI already installed, run `saucebase new my-app` instead.
+
+**Already have a Saucebase app?** Add it with:
 
 ```bash
 composer require saucebase/themes
+php artisan migrate
+php artisan modules:seed --module=themes
 npm run build
 ```
 
-Open any page and use the palette button to open the editor.
-
-## Applying a theme
-
-The editor previews a theme in your browser only. To make it the app's theme for everyone, bake it into `resources/css/theme.css`:
-
-- **Locally:** click **Set as default** (the paintbrush) in the editor. It writes what you see into `theme.css` and the picker's **Default** theme, and the dev server picks it up. The replaced one is kept as `storage/app/themes/default.json.backup`; copy it back over `default.json` to restore.
-- **From the terminal or CI:**
-
-```bash
-php artisan saucebase:theme:apply blueberry
-npm run build
-```
-
-Commit the updated `resources/css/theme.css`.
-
-## Extending
-
-**Add a theme.** Themes are JSON files. Save one from the editor, or drop a file into `storage/app/themes/`, and it shows up in the theme picker.
+Open any page and use the palette button to open the editor. When you're happy with a theme, **Set as default** and commit `resources/css/theme.css`.
 
 ## Configuration
 
+The editor is on in `local` and off everywhere else. To change that, add to `.env`:
+
 ```env
-THEMES_ENABLED=true    # show the editor
-THEMES_WRITABLE=false  # allow saving presets from it
+THEMES_ENABLED=true
+THEMES_WRITABLE=false
 ```
 
-Both are on in `local` and off everywhere else, so production is safe out of the box.
+`THEMES_ENABLED` shows the editor; `THEMES_WRITABLE` lets it save themes. On a public site, leave writing off: visitors' edits then stay in their own browser.
 
-- **Demo:** turn on `THEMES_ENABLED` only. Visitors can try themes live; their edits stay in their own browser.
-- **Production writes:** `THEMES_WRITABLE=true` lets anyone who can see the editor save presets. Not recommended: design locally and commit the result instead.
+The admin panel theme is under **Settings → Admin theme**.
 
-For the theme file format and how the editor works, see the [documentation](https://saucebase-dev.github.io/docs/modules/themes).
+## Demo data
+
+```bash
+php artisan modules:seed --module=themes --demo
+```
+
+Adds a staff account (`themes@saucebase.dev`) that only sees the admin theme settings. It uses the `DEMO_PASSWORD` from `.env`.
 
 ## License
 
-Proprietary. Part of [Saucebase](https://github.com/saucebase-dev/saucebase).
+MIT. See [LICENSE](LICENSE).
