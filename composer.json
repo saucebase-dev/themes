@@ -3,7 +3,7 @@
   "description": "Themes module",
   "type": "saucebase-module",
   "license": "MIT",
-  "version": "v3.2.1",
+  "version": "v3.2.2",
   "require": {
     "saucebase/core": "^1.6"
   },
