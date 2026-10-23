@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     computeRadiusScale,
     computeShadows,
     computeTrackingScale,
     isThemeVar,
+    loadGoogleFont,
     parseFontName,
     swatchRadiusSm,
 } from './theme';
@@ -104,5 +105,41 @@ describe('swatchRadiusSm', () => {
 
     it('falls back to the page radius when the theme has none', () => {
         expect(swatchRadiusSm(undefined)).toBe('var(--radius-sm)');
+    });
+});
+
+describe('loadGoogleFont', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    function stubDocument(bundled: string[]) {
+        const appended: { href: string }[] = [];
+        vi.stubGlobal('document', {
+            // The browser lists every @font-face the page's CSS declares here.
+            fonts: bundled.map((family) => ({ family: `"${family}"` })),
+            querySelector: () => null,
+            createElement: () => ({}),
+            head: {
+                appendChild: (link: { href: string }) => appended.push(link),
+            },
+        });
+
+        return appended;
+    }
+
+    it('skips a font the app already bundles', () => {
+        const appended = stubDocument(['Outfit']);
+
+        loadGoogleFont('Outfit');
+
+        expect(appended).toEqual([]);
+    });
+
+    it('loads a font the app does not bundle from Google', () => {
+        const appended = stubDocument(['Outfit']);
+
+        loadGoogleFont('Lora');
+
+        expect(appended).toHaveLength(1);
+        expect(appended[0].href).toContain('family=Lora');
     });
 });
