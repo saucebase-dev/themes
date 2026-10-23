@@ -3,5 +3,5 @@ import { registerGlobalComponent } from '@saucebase/vue/lib/globalComponents';
 import ThemePanel from './components/ThemePanel.vue';
 
 export function setup() {
-    registerGlobalComponent('top', ThemePanel);
+    registerGlobalComponent('app::page.before', ThemePanel);
 }

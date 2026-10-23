@@ -45,7 +45,7 @@ import type { FieldState, Font, Theme } from '../../types';
 import { useDialog } from '@saucebase/vue/composables/useDialog';
 import { useHttp } from '@saucebase/vue/composables/useHttp';
 import { router, usePage } from '@inertiajs/vue3';
-import { useColorMode } from '@vueuse/core';
+import { useColorMode, useMounted } from '@vueuse/core';
 import { trans } from 'laravel-vue-i18n';
 import { toast } from 'vue-sonner';
 import ColorInput from './ColorInput.vue';
@@ -95,6 +95,9 @@ const isDark = computed(() => colorMode.value === 'dark');
 const { confirm, isOpen: isConfirming } = useDialog();
 
 const themesEnabled = computed(() => page.props?.themes != null);
+
+// The panel lives in <body>, which the server can't render into: mount it first.
+const mounted = useMounted();
 const canSave = computed(() => page.props?.themes?.canSave === true);
 const canApply = computed(() => page.props?.themes?.canApply === true);
 
@@ -110,7 +113,7 @@ const fontOptions = computed<Record<string, Font[]>>(() => ({
 const defaultThemeId = computed(() => themes.value[0]?.id ?? 'default');
 
 const selectedThemeId = ref<string>(
-    (typeof localStorage !== 'undefined'
+    (typeof window !== 'undefined'
         ? localStorage.getItem(THEME_STORAGE_KEY)
         : null) ?? defaultThemeId.value,
 );
@@ -653,7 +656,7 @@ const dialogCommandOpen = ref(false);
 </script>
 
 <template>
-    <template v-if="themesEnabled">
+    <template v-if="themesEnabled && mounted">
         <!-- Floating trigger — hidden while panel is open -->
         <Teleport to="body">
             <div

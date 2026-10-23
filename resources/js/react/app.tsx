@@ -3,5 +3,5 @@ import { registerGlobalComponent } from '@saucebase/react/lib/globalComponents';
 import ThemePanel from './components/ThemePanel';
 
 export function setup() {
-    registerGlobalComponent('top', ThemePanel);
+    registerGlobalComponent('app::page.before', ThemePanel);
 }

@@ -168,7 +168,7 @@ export default function ThemePanel() {
     if (!modelRef.current) {
         modelRef.current = {
             selectedId:
-                typeof localStorage !== 'undefined'
+                typeof window !== 'undefined'
                     ? localStorage.getItem(THEME_STORAGE_KEY)
                     : null,
             fields: themeFields(t).map((f) => ({ ...f, value: '' })),

@@ -24,6 +24,14 @@ export function loadGoogleFont(font: string): void {
     if (typeof document === 'undefined' || !font) {
         return;
     }
+    // Already shipped by the app's CSS (an @font-face): fetching it again is waste.
+    if (
+        [...document.fonts].some(
+            (face) => face.family.replace(/["']/g, '') === font,
+        )
+    ) {
+        return;
+    }
     const href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@400;500;600;700&display=swap`;
     if (document.querySelector(`link[href="${href}"]`)) {
         return;
@@ -64,6 +72,7 @@ export function swatchRadiusSm(radius: string | undefined): string {
 }
 
 export function setProperty(name: string, value: string): void {
+    if (typeof document === 'undefined') return;
     document.documentElement.style.setProperty(name, value);
 }
 
