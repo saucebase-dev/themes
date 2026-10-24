@@ -39,10 +39,8 @@ It installs PHP and Composer if they're missing. With the CLI already installed,
 **Already have a Saucebase app?** Add it with:
 
 ```bash
-composer require saucebase/themes
-php artisan migrate
-php artisan modules:seed --module=themes
-npm run build
+php artisan saucebase:module-install themes
+npm install && npm run build
 ```
 
 Open any page and use the palette button to open the editor. When you're happy with a theme, **Set as default** and commit `resources/css/theme.css`.
