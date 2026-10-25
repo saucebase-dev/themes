@@ -29,7 +29,7 @@ A developer-facing visual theming system for Saucebase. Lets the SaaS owner desi
 - Google Fonts loaded on demand
 - Theme picker with circle-reveal transition (`@saucebase/core/lib/themeReveal`)
 - Preview persists in `localStorage` key `sb-theme-theme` (this browser only)
-- Footer: Delete (saved presets) · Reset · **Set as default** (local only) · Save menu (Save / Save as)
+- Footer: Delete (saved presets) · Reset · **Set as default** (`writable`) · Save menu (Save / Save as)
 - Filament admin theme: a separate settings page (`AdminThemeSettings`), colours/font/radius for the admin panel via `ThemesPlugin`
 
 ---
@@ -50,19 +50,19 @@ Theme selection is **global** (one theme for all users). Per-user or per-tenant 
 
 ### Admin Permission
 
-`manage themes` covers the `AdminThemeSettings` page (`canAccess()`). `access admin panel` alone only opens the panel. `Database\Seeders\DatabaseSeeder` creates it, granted to nobody; the app's roles seeder decides who gets it, and `admin` passes every check. The frontend theme routes are gated by `themes.writable` and the local environment, not by this permission.
+`manage themes` covers the `AdminThemeSettings` page (`canAccess()`). `access admin panel` alone only opens the panel. `Database\Seeders\DatabaseSeeder` creates it, granted to nobody; the app's roles seeder decides who gets it, and `admin` passes every check. The frontend theme write routes, Set as default included, are gated by `themes.writable`, not by this permission.
 
 ### Data flow
 
 ```
-ThemePanel "Set as default" (POST /themes/apply, local only)
+ThemePanel "Set as default" (POST /themes/apply, `themes.writable`)
         ↓  ThemeService::applyToCss() + replaceDefault() (merges into default.json, so vars the editor doesn't manage stay)
 resources/css/theme.css        ←  baked CSS vars (:root / .dark), what everyone sees
 resources/themes/default.json  ←  the picker's "Default" entry, kept equal to theme.css
 storage/app/themes/default.json.backup ← previous default; not listed; copy back to restore
 
 ThemesServiceProvider  ←  discovers bundled + storage/app/themes/*.json, shares `themes` prop
-        ↓  (items, fonts, canSave, canApply)
+        ↓  (items, fonts, canSave)
 ThemePanel            ←  previews via inline CSS var overrides (applyThemeVars)
 ```
 
@@ -139,8 +139,7 @@ documentElement inline styles  ← set by applyThemeVars() when a theme is activ
 | `src/Console/Commands/ApplyThemeCommand.php` | CLI wrapper around `applyToCss()` |
 | `src/Http/Controllers/ThemesController.php` | store / update / destroy presets, apply |
 | `src/Http/Requests/ApplyThemeRequest.php` | `cssVars` rules: size caps, keys `[a-z0-9-]`, values without `;{}\`, `/*` `*/`, `url(`, `image-set(` (they end up in theme.css); `SaveThemeRequest` extends it |
-| `src/Http/Middleware/EnsureThemesWritable.php` | 404 on preset writes unless `themes.writable` |
-| `src/Http/Middleware/EnsureLocalEnvironment.php` | 404 on apply outside `local` |
+| `src/Http/Middleware/EnsureThemesWritable.php` | 404 on every write (presets and Set as default) unless `themes.writable` |
 | `src/Providers/ThemesServiceProvider.php` | Shares the `themes` Inertia prop |
 | `src/Filament/…`, `src/Admin/AdminTheme.php`, `src/Settings/AdminThemeSettings.php` | Filament admin theme |
 | `resources/js/lib/fields.ts` | `themeFields()`: every editable field with type, vars, constraints |
@@ -242,10 +241,10 @@ When a synced field is edited in one mode, the value is mirrored to `modeSyncCac
 
 ```env
 THEMES_ENABLED=   # show the ThemePanel — default: on in local only
-THEMES_WRITABLE=  # allow save/update/delete of presets — default: on in local only
+THEMES_WRITABLE=  # allow save/update/delete of presets and Set as default — default: on in local only
 ```
 
-Owners may opt in outside local (e.g. a demo shows the panel with writes off). With `writable` off the write routes return 404 and the panel hides Save (`themes.canSave`). The write routes are `themes.store`, `themes.update` and `themes.destroy`; `themes.apply` (Set as default) only answers in the local environment. All are throttled (30/min) and `cssVars` is capped (100 keys per section, 255 chars per value).
+Owners may opt in outside local (e.g. a demo shows the panel with writes off). With `writable` off the write routes return 404 and the panel hides Save and Set as default (`themes.canSave`). The write routes are `themes.store`, `themes.update`, `themes.destroy` and `themes.apply` (Set as default, which rewrites `theme.css`, a source file: keep `writable` off in production). The E2E suite turns `enabled` and `writable` on per test with `laravel.config()`. All are throttled (30/min) and `cssVars` is capped (100 keys per section, 255 chars per value).
 
 ---
 
@@ -267,11 +266,11 @@ npm run test:unit                                                        # lib/ 
 npx playwright test --project="@themes*"                                 # E2E
 ```
 
-- `tests/Feature/ThemesApplyTest.php`: Set as default (local only, theme.css + default.json + backup)
+- `tests/Feature/ThemesApplyTest.php`: Set as default (`themes.writable`, theme.css + default.json + backup)
 - `tests/Feature/ThemesAccessTest.php`: `enabled`/`writable` flags, throttling, payload caps
 - `tests/Feature/ThemesControllerTest.php`, `ThemesConfigTest.php`: preset CRUD, shared props
 - `tests/Feature/ApplyThemeCommandTest.php`: CSS patching via the command
 - `tests/Feature/AdminTheme*Test.php`: Filament admin theme
 - `resources/js/lib/*.test.ts`: colour maths, fields, theme vars, panel payload, Tailwind palette
 
-Tests that simulate `local` must disable `PreventRequestForgery`: Laravel only skips CSRF in `testing`.
+Tests that post to the write routes disable `PreventRequestForgery` (`allowWrites()` in `ThemesApplyTest`), so the CSRF check stays out of what they test.

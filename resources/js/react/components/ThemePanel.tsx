@@ -151,7 +151,6 @@ export default function ThemePanel() {
     const themesProp = page.props?.themes;
     const themes: Theme[] = themesProp?.items ?? [];
     const canSave = themesProp?.canSave === true;
-    const canApply = themesProp?.canApply === true;
     const fontOptions: Record<string, Font[]> = {
         'font-sans': themesProp?.fonts?.sans ?? [],
         'font-serif': themesProp?.fonts?.serif ?? [],
@@ -808,7 +807,7 @@ export default function ThemePanel() {
                                     <IconRotateCcw className="size-4" />
                                     {t('Reset')}
                                 </button>
-                                {canApply && (
+                                {canSave && (
                                     <button
                                         data-testid="theme-panel-apply"
                                         disabled={!canReset}
@@ -862,7 +861,7 @@ export default function ThemePanel() {
                                             </button>
                                         </IconTooltip>
                                     ))}
-                                {!canApply && (
+                                {!canSave && (
                                     <IconTooltip
                                         label={t('How to use this theme')}
                                     >

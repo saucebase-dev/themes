@@ -58,9 +58,9 @@ class ThemesApplyTest extends TestCase
     }
 
     /** Laravel only skips the CSRF check in the `testing` environment, so it's off here explicitly. */
-    private function actLocally(): void
+    private function allowWrites(): void
     {
-        $this->app['env'] = 'local';
+        config(['themes.writable' => true]);
         $this->withoutMiddleware(PreventRequestForgery::class);
     }
 
@@ -76,7 +76,7 @@ class ThemesApplyTest extends TestCase
 
     public function test_applying_the_default_theme_to_itself_is_refused_and_changes_nothing(): void
     {
-        $this->actLocally();
+        $this->allowWrites();
         @unlink($this->backupJsonPath);
 
         $stored = json_decode($this->originalDefaultJson, true)['cssVars'];
@@ -90,16 +90,16 @@ class ThemesApplyTest extends TestCase
         $this->assertFileDoesNotExist($this->backupJsonPath);
     }
 
-    public function test_apply_does_not_exist_outside_local(): void
+    public function test_apply_does_not_exist_while_not_writable(): void
     {
         $this->postJson(route('themes.apply'), $this->payload())->assertNotFound();
 
         $this->assertSame($this->originalCss, file_get_contents($this->themeCssPath));
     }
 
-    public function test_apply_writes_the_theme_into_theme_css_locally(): void
+    public function test_apply_writes_the_theme_into_theme_css(): void
     {
-        $this->actLocally();
+        $this->allowWrites();
 
         $this->postJson(route('themes.apply'), $this->payload())->assertOk();
 
@@ -112,7 +112,7 @@ class ThemesApplyTest extends TestCase
 
     public function test_values_that_would_break_the_css_are_rejected(): void
     {
-        $this->actLocally();
+        $this->allowWrites();
         $payload = $this->payload();
         $payload['cssVars']['light']['primary'] = 'red; } body { display: none';
 
@@ -122,18 +122,22 @@ class ThemesApplyTest extends TestCase
         $this->assertSame($this->originalCss, file_get_contents($this->themeCssPath));
     }
 
-    public function test_can_apply_is_shared_only_locally(): void
+    /** Set as default is a write like any other: `themes.writable` decides, in any environment. */
+    public function test_apply_follows_the_writable_setting(): void
     {
-        config(['themes.enabled' => true]);
-        $this->get('/')->assertInertia(fn ($page) => $page->where('themes.canApply', false));
+        $this->withoutMiddleware(PreventRequestForgery::class);
 
-        $this->actLocally();
-        $this->get('/')->assertInertia(fn ($page) => $page->where('themes.canApply', true));
+        config(['themes.writable' => false]);
+        $this->postJson(route('themes.apply'), $this->payload())->assertNotFound();
+        $this->assertSame($this->originalCss, file_get_contents($this->themeCssPath));
+
+        config(['themes.writable' => true]);
+        $this->postJson(route('themes.apply'), $this->payload())->assertOk();
     }
 
     public function test_setting_a_default_updates_default_json_and_backs_up_the_previous_one(): void
     {
-        $this->actLocally();
+        $this->allowWrites();
         $original = json_decode($this->originalDefaultJson, true);
 
         $this->postJson(route('themes.apply'), $this->payload())->assertOk();
@@ -151,7 +155,7 @@ class ThemesApplyTest extends TestCase
 
     public function test_setting_a_default_keeps_vars_the_editor_does_not_manage(): void
     {
-        $this->actLocally();
+        $this->allowWrites();
         $default = json_decode($this->originalDefaultJson, true);
         $default['cssVars']['light']['destructive-foreground'] = 'oklch(1 0 0)';
         file_put_contents($this->defaultJsonPath, json_encode($default));
@@ -165,7 +169,7 @@ class ThemesApplyTest extends TestCase
 
     public function test_the_default_entry_shows_the_new_default_and_the_backup_stays_out_of_the_picker(): void
     {
-        $this->actLocally();
+        $this->allowWrites();
         config(['themes.enabled' => true]);
 
         $themeCount = count(ThemeService::discoverThemes());
@@ -181,7 +185,7 @@ class ThemesApplyTest extends TestCase
 
     public function test_keys_that_would_break_the_css_are_rejected(): void
     {
-        $this->actLocally();
+        $this->allowWrites();
         $payload = $this->payload();
         $payload['cssVars']['light']['x: red; } body { display: none } :root { --y'] = 'red';
 
@@ -193,7 +197,7 @@ class ThemesApplyTest extends TestCase
 
     public function test_values_that_open_a_css_comment_are_rejected(): void
     {
-        $this->actLocally();
+        $this->allowWrites();
         $payload = $this->payload();
         $payload['cssVars']['light']['primary'] = 'red /* the rest of theme.css';
 
@@ -205,7 +209,7 @@ class ThemesApplyTest extends TestCase
 
     public function test_values_that_load_external_resources_are_rejected(): void
     {
-        $this->actLocally();
+        $this->allowWrites();
         $payload = $this->payload();
         $payload['cssVars']['light']['primary'] = 'url(https://evil.test/track.png)';
 
@@ -216,7 +220,7 @@ class ThemesApplyTest extends TestCase
 
     public function test_values_are_written_literally(): void
     {
-        $this->actLocally();
+        $this->allowWrites();
         $payload = $this->payload();
         $payload['cssVars']['light']['font-sans'] = '"$0 Sans", sans-serif';
 
