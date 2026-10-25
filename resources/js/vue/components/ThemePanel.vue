@@ -99,7 +99,6 @@ const themesEnabled = computed(() => page.props?.themes != null);
 // The panel lives in <body>, which the server can't render into: mount it first.
 const mounted = useMounted();
 const canSave = computed(() => page.props?.themes?.canSave === true);
-const canApply = computed(() => page.props?.themes?.canApply === true);
 
 const themes = computed<Theme[]>(() => page.props?.themes?.items ?? []);
 const fontOptions = computed<Record<string, Font[]>>(() => ({
@@ -964,7 +963,7 @@ const dialogCommandOpen = ref(false);
                                 {{ $t('Reset') }}
                             </button>
                             <button
-                                v-if="canApply"
+                                v-if="canSave"
                                 data-testid="theme-panel-apply"
                                 :disabled="!canReset"
                                 class="border-border hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
@@ -1018,7 +1017,7 @@ const dialogCommandOpen = ref(false);
                                     </TooltipContent>
                                 </Tooltip>
                             </template>
-                            <Tooltip v-if="!canApply">
+                            <Tooltip v-if="!canSave">
                                 <TooltipTrigger as-child>
                                     <button
                                         data-testid="theme-panel-command"

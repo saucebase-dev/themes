@@ -25,7 +25,6 @@ class ThemesServiceProvider extends ModuleServiceProvider
         Inertia::share('themes', fn () => config('themes.enabled') ? [
             'items' => ThemeService::discoverThemes(),
             'canSave' => (bool) config('themes.writable'),
-            'canApply' => app()->isLocal(),
             'fonts' => [
                 'sans' => ThemeService::loadFonts('sans'),
                 'serif' => ThemeService::loadFonts('serif'),

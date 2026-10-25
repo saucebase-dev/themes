@@ -7,6 +7,14 @@ const THEME_STORAGE_KEY = 'sb-theme-theme';
 // "Set as default" rewrites. One worker runs them in order so they can't collide.
 test.describe.configure({ mode: 'serial' });
 
+// The suite runs in its own `e2e` environment, where the panel and its writes are
+// off by default, as anywhere but local. Each test turns them on for itself; a
+// describe that tests them off overrides this after it.
+test.beforeEach(async ({ laravel }) => {
+    await laravel.config('themes.enabled', true);
+    await laravel.config('themes.writable', true);
+});
+
 async function getCssVar(page: Page, varName: string): Promise<string> {
     return page.evaluate(
         (v) =>

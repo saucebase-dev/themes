@@ -5,7 +5,6 @@ declare module '@inertiajs/core' {
         themes?: {
             items: Theme[];
             canSave: boolean;
-            canApply: boolean;
             fonts: {
                 sans: Font[];
                 serif: Font[];
