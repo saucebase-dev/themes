@@ -587,7 +587,7 @@ watch(
             if (!colorFields.length) continue;
             const allOn = colorFields.every((f) => fieldSynced[f.key]);
             const allOff = colorFields.every((f) => !fieldSynced[f.key]);
-            const newState = allOn ? true : allOff ? false : null;
+            const newState = allOn || (allOff ? false : null);
             if (groupFieldSync[section.name] !== newState) {
                 groupFieldSync[section.name] = newState;
             }
@@ -600,7 +600,7 @@ watch(
         if (sidebarColorFields.length) {
             const allOn = sidebarColorFields.every((f) => fieldSynced[f.key]);
             const allOff = sidebarColorFields.every((f) => !fieldSynced[f.key]);
-            const newState = allOn ? true : allOff ? false : null;
+            const newState = allOn || (allOff ? false : null);
             if (sidebarSynced.value !== newState)
                 sidebarSynced.value = newState;
         }
