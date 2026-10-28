@@ -20,13 +20,13 @@ const props = defineProps<{
 
 const model = defineModel<boolean | null>({ default: false });
 
-const stateLabel = computed(() =>
-    model.value === true
-        ? (props.tooltipActive ?? trans('Active'))
-        : model.value === null
-          ? (props.tooltipIndeterminate ?? trans('Partially linked'))
-          : (props.tooltip ?? trans('Link')),
-);
+const stateLabel = computed(() => {
+    if (model.value === true) return props.tooltipActive ?? trans('Active');
+    if (model.value === null)
+        return props.tooltipIndeterminate ?? trans('Partially linked');
+
+    return props.tooltip ?? trans('Link');
+});
 
 function toggle() {
     model.value = model.value === true ? false : true;
