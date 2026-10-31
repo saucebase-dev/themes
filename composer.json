@@ -3,7 +3,7 @@
   "description": "A visual theme editor for Saucebase: colours, fonts, radius and shadows, with live preview.",
   "type": "saucebase-module",
   "license": "MIT",
-  "version": "v3.4.3",
+  "version": "v3.4.4",
   "require": {
     "saucebase/core": "^2.8"
   },
