@@ -22,12 +22,82 @@ class AdminThemeSettingsPageTest extends TestCase
         $this->actingAs($admin);
     }
 
+    /** A palette fills the colours in one click; nothing new is stored but the colours. */
+    public function test_picking_a_palette_saves_its_colours(): void
+    {
+        $this->actingAsAdmin();
+        $preset = AdminThemeSettingsPage::presets()['coffee'];
+        $key = 'coffee';
+
+        Livewire::test(AdminThemeSettingsPage::class)
+            ->fillForm(['palette' => $key])
+            ->assertFormFieldHidden('primary')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $settings = new AdminThemeSettings;
+        $this->assertSame($preset['primary'], $settings->primary);
+        $this->assertSame($preset['gray'], $settings->gray);
+        $this->assertNull($settings->danger);
+    }
+
+    /** The page reads which palette the stored colours are: a match, the default, or custom. */
+    public function test_the_page_recognises_the_saved_palette(): void
+    {
+        $this->actingAsAdmin();
+        $settings = app(AdminThemeSettings::class);
+
+        Livewire::test(AdminThemeSettingsPage::class)->assertFormSet(['palette' => 'default']);
+
+        $key = 'kiwi';
+        $settings->primary = AdminThemeSettingsPage::presets()[$key]['primary'];
+        $settings->gray = AdminThemeSettingsPage::presets()[$key]['gray'];
+        $settings->save();
+        Livewire::test(AdminThemeSettingsPage::class)->assertFormSet(['palette' => $key]);
+
+        $settings->danger = '#000000';
+        $settings->save();
+        Livewire::test(AdminThemeSettingsPage::class)
+            ->assertFormSet(['palette' => 'custom'])
+            ->assertFormFieldVisible('primary');
+    }
+
+    /** The palettes are the app's own themes, so the admin can match the app. */
+    public function test_the_palettes_are_the_shipped_themes(): void
+    {
+        $presets = AdminThemeSettingsPage::presets();
+
+        $this->assertSame('Coffee', $presets['coffee']['label']);
+        $this->assertSame('oklch(0.50 0.08 43)', $presets['coffee']['primary']);
+        $this->assertSame('oklch(0.92 0.030 78)', $presets['coffee']['gray']);
+        $this->assertArrayHasKey('kiwi', $presets);
+        // The app's default theme can't take `default`, the page's no-colour option.
+        $this->assertSame('App default', $presets['app-default']['label']);
+        $this->assertArrayNotHasKey('default', $presets);
+    }
+
+    public function test_the_default_palette_clears_the_colours(): void
+    {
+        $this->actingAsAdmin();
+        $settings = app(AdminThemeSettings::class);
+        $settings->primary = '#123456';
+        $settings->save();
+
+        Livewire::test(AdminThemeSettingsPage::class)
+            ->fillForm(['palette' => 'default'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertNull((new AdminThemeSettings)->primary);
+    }
+
     public function test_an_admin_saves_the_admin_theme(): void
     {
         $this->actingAsAdmin();
 
         Livewire::test(AdminThemeSettingsPage::class)
             ->fillForm([
+                'palette' => 'custom',
                 'primary' => '#6366f1',
                 'danger' => '#e11d48',
                 'font' => 'DM Sans',

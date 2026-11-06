@@ -9,6 +9,7 @@ use Filament\FontProviders\LocalFontProvider;
 use Filament\Support\Colors\Color;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
+use Modules\Themes\Admin\AdminTheme;
 use Modules\Themes\Settings\AdminThemeSettings;
 use Tests\TestCase;
 
@@ -52,8 +53,41 @@ class AdminThemeTest extends TestCase
 
         $colors = Filament::getPanel('admin')->getColors();
 
-        $this->assertSame(Color::generatePalette('#6366f1'), $colors['primary']);
-        $this->assertSame(Color::generatePalette('#e11d48'), $colors['danger']);
+        $this->assertSame(AdminTheme::palettes(['primary' => '#6366f1'])['primary'], $colors['primary']);
+        $this->assertCount(11, $colors['danger']);
+    }
+
+    /**
+     * The shades keep the colour's own saturation: Filament's generator keeps only the hue,
+     * so a muted brown or a faintly tinted grey would come out vivid.
+     */
+    public function test_a_muted_colour_stays_muted(): void
+    {
+        $chroma = fn (string $shade): float => sscanf($shade, 'oklch(%f %f %f)')[1];
+
+        $coffee = AdminTheme::palettes(['primary' => 'oklch(0.50 0.08 43)'])['primary'];
+        $this->assertEqualsWithDelta(0.08, $chroma($coffee[500]), 0.001);
+
+        $tint = AdminTheme::palettes(['gray' => 'oklch(0.96 0.006 85)'])['gray'];
+        $this->assertLessThan(0.01, $chroma($tint[500]));
+        $this->assertGreaterThan(0, $chroma($tint[500]));
+    }
+
+    /** Lightness written as a percentage, as the app's default theme does. */
+    public function test_a_percentage_lightness_keeps_its_saturation(): void
+    {
+        $shade = AdminTheme::palettes(['primary' => 'oklch(52.43% 0.1679 286.902)'])['primary'][500];
+
+        $this->assertEqualsWithDelta(0.1679, sscanf($shade, 'oklch(%f %f %f)')[1], 0.001);
+    }
+
+    /** The button shade is dark enough for white text, as Filament's own palettes are. */
+    public function test_the_button_shade_is_as_dark_as_filaments_own(): void
+    {
+        $lightness = fn (string $shade): float => sscanf($shade, 'oklch(%f')[0];
+        $mango = AdminTheme::palettes(['primary' => 'oklch(0.75 0.17 68)'])['primary'];
+
+        $this->assertEqualsWithDelta($lightness(Color::Indigo[600]), $lightness($mango[600]), 0.001);
     }
 
     public function test_a_font_reaches_the_panel(): void
