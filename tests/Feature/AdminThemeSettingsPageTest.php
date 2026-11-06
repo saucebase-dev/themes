@@ -23,6 +23,12 @@ class AdminThemeSettingsPageTest extends TestCase
     }
 
     /** A palette fills the colours in one click; nothing new is stored but the colours. */
+    /** Last under Settings, after API tokens (90) and Coming Soon (100). */
+    public function test_it_is_the_last_setting(): void
+    {
+        $this->assertSame(110, (new \ReflectionProperty(AdminThemeSettingsPage::class, 'navigationSort'))->getValue());
+    }
+
     public function test_picking_a_palette_saves_its_colours(): void
     {
         $this->actingAsAdmin();

@@ -29,7 +29,8 @@ class AdminThemeSettings extends SettingsPage
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSwatch;
 
-    protected static ?int $navigationSort = 20;
+    /** Last under Settings, after API tokens (90) and Coming Soon (100). */
+    protected static ?int $navigationSort = 110;
 
     protected static string $settings = Settings::class;
 
