@@ -30,7 +30,7 @@ A developer-facing visual theming system for Saucebase. Lets the SaaS owner desi
 - Theme picker with circle-reveal transition (`@saucebase/core/lib/themeReveal`)
 - Preview persists in `localStorage` key `sb-theme-theme` (this browser only)
 - Footer: Delete (saved presets) · Reset · **Set as default** (`writable`) · Save menu (Save / Save as)
-- Filament admin theme: a separate settings page (`AdminThemeSettings`), colours/font/radius for the admin panel via `ThemesPlugin`
+- Filament admin theme: a separate settings page (`AdminThemeSettings`), colours/font/radius for the admin panel via `ThemesPlugin`. A palette picker on top offers the shipped themes (`AdminThemeSettings::presets()`, read from `resources/themes/*.json`: each theme's light `primary`, and its `sidebar` as the base; the `default` theme is keyed `app-default`, since `default` is the no-colour option, labelled Neutral), or Custom, which shows the colour pickers. The palette isn't stored: picking one fills the colour settings, and `AdminTheme::presetFor()` reads it back from them. Every colour goes through `AdminTheme::generate()`, not Filament's `generatePalette()`: that one keeps only the hue, with a fixed vivid chroma and a light 600, so muted colours came out vivid and buttons pale. `generate()` uses Filament's Indigo shade curve with the chroma scaled to the colour's own, and reads lightness as `0.52` or `52%`.
 
 ---
 
