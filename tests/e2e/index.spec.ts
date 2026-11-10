@@ -158,7 +158,7 @@ test.describe('Theme panel', () => {
         await page.getByTestId('save-theme-submit').click();
 
         await expect(
-            page.getByText('Something went wrong. Try again.'),
+            page.locator('[data-sonner-toast][data-type="error"]'),
         ).toBeVisible();
         await expect(page.getByTestId('save-theme-submit')).toBeEnabled();
     });
