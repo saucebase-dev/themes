@@ -6,7 +6,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 
-class DemoThemesDatabaseSeeder extends Seeder
+class ShowcaseThemesDatabaseSeeder extends Seeder
 {
     public function run(): void
     {
