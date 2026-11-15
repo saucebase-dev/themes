@@ -61,7 +61,7 @@ The admin panel theme is under **Settings → Admin theme**.
 ## Demo data
 
 ```bash
-php artisan modules:seed --module=themes --demo
+php artisan modules:seed --module=themes --state=showcase
 ```
 
 Adds a staff account (`themes@saucebase.dev`) that only sees the admin theme settings. It uses the `DEMO_PASSWORD` from `.env`.
