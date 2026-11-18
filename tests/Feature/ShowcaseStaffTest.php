@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Modules\Themes\Database\Seeders\DatabaseSeeder;
 use Modules\Themes\Database\Seeders\ShowcaseThemesDatabaseSeeder;
+use Modules\Themes\Tests\Support\IsolatesUserThemes;
 use Saucebase\Core\Testing\AssertsDemoAccounts;
 use Tests\TestCase;
 
@@ -17,6 +18,7 @@ use Tests\TestCase;
 class ShowcaseStaffTest extends TestCase
 {
     use AssertsDemoAccounts;
+    use IsolatesUserThemes;
     use RefreshDatabase;
 
     public function test_the_demo_adds_a_staff_account_for_this_module_only(): void

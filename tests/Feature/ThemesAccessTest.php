@@ -3,11 +3,13 @@
 namespace Modules\Themes\Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Modules\Themes\Tests\Support\IsolatesUserThemes;
 use Saucebase\Core\ProjectConfig;
 use Tests\TestCase;
 
 class ThemesAccessTest extends TestCase
 {
+    use IsolatesUserThemes;
     use RefreshDatabase;
 
     private string $storageDir;

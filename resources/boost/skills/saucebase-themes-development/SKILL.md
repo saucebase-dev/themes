@@ -273,4 +273,6 @@ npx playwright test --project="@themes*"                                 # E2E
 - `tests/Feature/AdminTheme*Test.php`: Filament admin theme
 - `resources/js/lib/*.test.ts`: colour maths, fields, theme vars, panel payload, Tailwind palette
 
+Feature tests use `Modules\Themes\Tests\Support\IsolatesUserThemes`, which points storage at a temporary directory per test: an app's own `storage/app/themes/*.json` (a template ships a `default.json`) must neither change what a test sees nor be overwritten by it. A new feature test that reads or writes user themes uses it too.
+
 Tests that post to the write routes disable `PreventRequestForgery` (`allowWrites()` in `ThemesApplyTest`), so the CSRF check stays out of what they test.

@@ -3,10 +3,12 @@
 namespace Modules\Themes\Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Modules\Themes\Tests\Support\IsolatesUserThemes;
 use Tests\TestCase;
 
 class ThemesControllerTest extends TestCase
 {
+    use IsolatesUserThemes;
     use RefreshDatabase;
 
     private string $storageDir;

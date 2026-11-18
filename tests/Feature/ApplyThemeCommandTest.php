@@ -3,10 +3,13 @@
 namespace Modules\Themes\Tests\Feature;
 
 use Modules\Themes\Services\ThemeService;
+use Modules\Themes\Tests\Support\IsolatesUserThemes;
 use Tests\TestCase;
 
 class ApplyThemeCommandTest extends TestCase
 {
+    use IsolatesUserThemes;
+
     private string $themeCssPath;
 
     private string $originalCss;
