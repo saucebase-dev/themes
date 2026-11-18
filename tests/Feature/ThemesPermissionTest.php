@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Themes\Database\Seeders\DatabaseSeeder;
 use Modules\Themes\Filament\Pages\AdminThemeSettings;
+use Modules\Themes\Tests\Support\IsolatesUserThemes;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -15,6 +16,7 @@ use Tests\TestCase;
  */
 class ThemesPermissionTest extends TestCase
 {
+    use IsolatesUserThemes;
     use RefreshDatabase;
 
     protected function setUp(): void
