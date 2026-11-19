@@ -30,6 +30,14 @@ class ApplyThemeCommandTest extends TestCase
         parent::tearDown();
     }
 
+    /** A saved preset named like a shipped theme is the one the picker shows, so it is the one applied. */
+    public function test_a_saved_preset_wins_over_the_shipped_theme_of_the_same_name(): void
+    {
+        ThemeService::saveUserTheme('beetroot', ['cssVars' => ['theme' => [], 'light' => ['primary' => 'mine'], 'dark' => []]]);
+
+        $this->assertStringContainsString('"mine"', (string) ThemeService::getTheme('beetroot'));
+    }
+
     // ── New shadcn format ─────────────────────────────────────────────────────
 
     public function test_new_format_patches_light_vars_into_root_block(): void
