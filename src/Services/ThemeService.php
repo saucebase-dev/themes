@@ -148,17 +148,17 @@ class ThemeService
      */
     public static function getTheme(string $theme): string|false
     {
-        $bundlePath = static::getBundleThemePath($theme);
-        if (file_exists($bundlePath)) {
-            return file_get_contents($bundlePath);
+        // The user's file first, as discoverThemes() does, and only one it accepts: what the
+        // picker shows is what gets applied.
+        $user = static::getUserThemePath($theme);
+
+        if (static::parseThemeFile($user) !== null) {
+            return file_get_contents($user);
         }
 
-        $userPath = static::getUserThemePath($theme);
-        if (file_exists($userPath)) {
-            return file_get_contents($userPath);
-        }
+        $bundle = static::getBundleThemePath($theme);
 
-        return false;
+        return file_exists($bundle) ? file_get_contents($bundle) : false;
     }
 
     /**

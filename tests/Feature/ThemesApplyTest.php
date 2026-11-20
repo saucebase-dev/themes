@@ -5,11 +5,13 @@ namespace Modules\Themes\Tests\Feature;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Themes\Services\ThemeService;
+use Modules\Themes\Tests\Support\IsolatesUserThemes;
 use Saucebase\Core\ProjectConfig;
 use Tests\TestCase;
 
 class ThemesApplyTest extends TestCase
 {
+    use IsolatesUserThemes;
     use RefreshDatabase;
 
     private string $themeCssPath;

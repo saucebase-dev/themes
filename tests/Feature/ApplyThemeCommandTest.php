@@ -3,10 +3,13 @@
 namespace Modules\Themes\Tests\Feature;
 
 use Modules\Themes\Services\ThemeService;
+use Modules\Themes\Tests\Support\IsolatesUserThemes;
 use Tests\TestCase;
 
 class ApplyThemeCommandTest extends TestCase
 {
+    use IsolatesUserThemes;
+
     private string $themeCssPath;
 
     private string $originalCss;
@@ -25,6 +28,22 @@ class ApplyThemeCommandTest extends TestCase
         file_put_contents($this->themeCssPath, $this->originalCss);
 
         parent::tearDown();
+    }
+
+    /** A saved preset named like a shipped theme is the one the picker shows, so it is the one applied. */
+    public function test_a_saved_preset_wins_over_the_shipped_theme_of_the_same_name(): void
+    {
+        ThemeService::saveUserTheme('beetroot', ['name' => 'Beetroot', 'cssVars' => ['theme' => [], 'light' => ['primary' => 'mine'], 'dark' => []]]);
+
+        $this->assertStringContainsString('"mine"', (string) ThemeService::getTheme('beetroot'));
+    }
+
+    /** A saved file the picker skips (no name) is not what gets applied: the shipped theme is. */
+    public function test_a_saved_preset_the_picker_skips_leaves_the_shipped_theme(): void
+    {
+        ThemeService::saveUserTheme('beetroot', ['cssVars' => ['theme' => [], 'light' => ['primary' => 'mine'], 'dark' => []]]);
+
+        $this->assertStringNotContainsString('"mine"', (string) ThemeService::getTheme('beetroot'));
     }
 
     // ── New shadcn format ─────────────────────────────────────────────────────

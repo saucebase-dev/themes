@@ -4,8 +4,10 @@ namespace Modules\Themes\Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Saucebase\Core\Attributes\DemoAccount;
 use Spatie\Permission\Models\Role;
 
+#[DemoAccount('themes@saucebase.dev', 'staff: the themes admin')]
 class ShowcaseThemesDatabaseSeeder extends Seeder
 {
     public function run(): void

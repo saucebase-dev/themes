@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Modules\Themes\Admin\AdminTheme;
 use Modules\Themes\Settings\AdminThemeSettings;
+use Modules\Themes\Tests\Support\IsolatesUserThemes;
 use Tests\TestCase;
 
 /**
@@ -19,6 +20,7 @@ use Tests\TestCase;
  */
 class AdminThemeTest extends TestCase
 {
+    use IsolatesUserThemes;
     use RefreshDatabase;
 
     private function saveSettings(array $values): void

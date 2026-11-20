@@ -8,10 +8,12 @@ use Livewire\Livewire;
 use Modules\Themes\Admin\AdminTheme;
 use Modules\Themes\Filament\Pages\AdminThemeSettings as AdminThemeSettingsPage;
 use Modules\Themes\Settings\AdminThemeSettings;
+use Modules\Themes\Tests\Support\IsolatesUserThemes;
 use Tests\TestCase;
 
 class AdminThemeSettingsPageTest extends TestCase
 {
+    use IsolatesUserThemes;
     use RefreshDatabase;
 
     private function actingAsAdmin(): void
