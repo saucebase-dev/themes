@@ -33,9 +33,17 @@ class ApplyThemeCommandTest extends TestCase
     /** A saved preset named like a shipped theme is the one the picker shows, so it is the one applied. */
     public function test_a_saved_preset_wins_over_the_shipped_theme_of_the_same_name(): void
     {
-        ThemeService::saveUserTheme('beetroot', ['cssVars' => ['theme' => [], 'light' => ['primary' => 'mine'], 'dark' => []]]);
+        ThemeService::saveUserTheme('beetroot', ['name' => 'Beetroot', 'cssVars' => ['theme' => [], 'light' => ['primary' => 'mine'], 'dark' => []]]);
 
         $this->assertStringContainsString('"mine"', (string) ThemeService::getTheme('beetroot'));
+    }
+
+    /** A saved file the picker skips (no name) is not what gets applied: the shipped theme is. */
+    public function test_a_saved_preset_the_picker_skips_leaves_the_shipped_theme(): void
+    {
+        ThemeService::saveUserTheme('beetroot', ['cssVars' => ['theme' => [], 'light' => ['primary' => 'mine'], 'dark' => []]]);
+
+        $this->assertStringNotContainsString('"mine"', (string) ThemeService::getTheme('beetroot'));
     }
 
     // ── New shadcn format ─────────────────────────────────────────────────────
