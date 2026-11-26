@@ -8,70 +8,31 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useHttp } from '@saucebase/vue/composables/useHttp';
-import { router } from '@inertiajs/vue3';
-import { trans } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
-import { toast } from 'vue-sonner';
+import { ref, watch } from 'vue';
 import IconSave from '~icons/lucide/save';
 
 const open = defineModel<boolean>({ default: false });
 
-const props = defineProps<{
-    toJson: (name: string) => {
-        name: string;
-        title: string;
-        description: string;
-        cssVars: {
-            theme?: Record<string, string>;
-            light: Record<string, string>;
-            dark: Record<string, string>;
-        };
-    };
-    onThemeSaved?: (id: string) => void;
+defineProps<{
+    /** The theme is being saved: the buttons wait. */
+    saving?: boolean;
+}>();
+
+const emit = defineEmits<{
+    /** Save, with the name. Whoever shows the dialog saves the theme and closes it. */
+    save: [name: string];
 }>();
 
 const name = ref('');
-const loading = ref(false);
-const isLoading = computed(() => loading.value);
 
-const handleCancel = () => {
-    open.value = false;
-    name.value = '';
-};
+// A closed dialog starts over.
+watch(open, (isOpen) => {
+    if (!isOpen) name.value = '';
+});
 
-const handleSave = async () => {
-    const payload = props.toJson(name.value);
-    const http = useHttp(payload).withAllErrors();
-
-    http.post(route('themes.store'), {
-        onBefore() {
-            loading.value = true;
-        },
-        onSuccess() {
-            router.reload({
-                only: ['themes'],
-                onSuccess: () => {
-                    props.onThemeSaved?.(payload.name);
-                    open.value = false;
-                    name.value = '';
-                    toast.success(trans('Theme saved successfully'), {
-                        testId: 'theme-saved-toast',
-                    });
-                    loading.value = false;
-                },
-            });
-        },
-        onError: (errors) => {
-            if (errors?.name) toast.error(trans(errors.name));
-            else toast.error(trans('Failed to save theme'));
-            return true;
-        },
-        onFinish: () => {
-            loading.value = false;
-        },
-    });
-};
+function save() {
+    if (name.value.trim()) emit('save', name.value);
+}
 </script>
 
 <template>
@@ -106,8 +67,8 @@ const handleSave = async () => {
                     class="mt-4"
                     data-testid="save-theme-name"
                     :placeholder="$t('Theme name')"
-                    :disabled="isLoading"
-                    @keydown.enter="handleSave"
+                    :disabled="saving"
+                    @keydown.enter="save"
                 />
             </div>
             <div class="bg-muted/50 border-t p-4">
@@ -116,18 +77,18 @@ const handleSave = async () => {
                         variant="outline"
                         class="dark:hover:bg-accent dark:hover:text-accent-foreground w-full"
                         data-testid="save-theme-cancel"
-                        :disabled="isLoading"
-                        @click="handleCancel"
+                        :disabled="saving"
+                        @click="open = false"
                     >
                         {{ $t('Cancel') }}
                     </Button>
                     <Button
                         class="w-full"
                         data-testid="save-theme-submit"
-                        :disabled="!name.trim() || isLoading"
-                        @click="handleSave"
+                        :disabled="!name.trim() || saving"
+                        @click="save"
                     >
-                        {{ isLoading ? $t('Saving...') : $t('Save') }}
+                        {{ saving ? $t('Saving...') : $t('Save') }}
                     </Button>
                 </div>
             </div>

@@ -37,7 +37,7 @@ function toggle() {
     <Tooltip>
         <TooltipTrigger as-child>
             <span
-                class="focus-visible:ring-ring flex cursor-pointer items-center rounded-full p-1.5 text-xs font-medium shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                class="focus-visible:ring-ring inline-flex cursor-pointer items-center rounded-full p-1.5 text-xs font-medium shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
                 :class="
                     model === true
                         ? 'bg-primary text-primary-foreground'
