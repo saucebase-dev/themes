@@ -21,9 +21,9 @@ export default function ThemeColorSwatch({
 
     return (
         <span
-            className="ring-offset-muted grid shrink-0 grid-cols-2 grid-rows-2 gap-0.5 p-1.5 shadow-xl ring-1 ring-black/10 ring-offset-2 dark:ring-white/10"
+            className="ring-offset-muted inline-grid shrink-0 grid-cols-2 grid-rows-2 gap-0.5 p-1.5 shadow-xl ring-1 ring-black/10 ring-offset-2 dark:ring-white/10"
             style={{
-                backgroundColor: preview.background,
+                backgroundColor: preview.background ?? 'var(--background)',
                 borderRadius: radius ?? 'var(--radius)',
             }}
         >

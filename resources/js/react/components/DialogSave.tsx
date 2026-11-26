@@ -7,71 +7,35 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { router } from '@inertiajs/react';
-import { useHttp } from '@saucebase/react/hooks/useHttp';
 import { useT } from '@saucebase/react/i18n';
-import { useState } from 'react';
-import { toast } from 'sonner';
+import { useEffect, useState } from 'react';
 import IconSave from '~icons/lucide/save';
-import type { ThemePayload } from '../../lib/panel';
-import type { Theme } from '../../types';
 
 interface DialogSaveProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    toJson: (name: string) => ThemePayload;
-    /** Gets the reloaded theme list, which already includes the new theme. */
-    onThemeSaved?: (id: string, themes: Theme[]) => void;
+    /** The theme is being saved: the buttons wait. */
+    saving?: boolean;
+    /** Save, with the name. Whoever shows the dialog saves the theme and closes it. */
+    onSave: (name: string) => void;
 }
 
 export default function DialogSave({
     open,
     onOpenChange,
-    toJson,
-    onThemeSaved,
+    saving = false,
+    onSave,
 }: DialogSaveProps) {
     const t = useT();
-    // The toast, plus re-enabling Save, which only this dialog knows about.
-    const http = useHttp({}, (message) => {
-        toast.error(t(message));
-        setLoading(false);
-    });
     const [name, setName] = useState('');
-    const [loading, setLoading] = useState(false);
 
-    function close() {
-        onOpenChange(false);
-        setName('');
-    }
+    // A closed dialog starts over.
+    useEffect(() => {
+        if (!open) setName('');
+    }, [open]);
 
-    function handleSave() {
-        if (!name.trim() || loading) return;
-        const payload = toJson(name);
-
-        setLoading(true);
-        http.transform(() => payload);
-        http.post(route('themes.store'), {
-            onSuccess() {
-                router.reload({
-                    only: ['themes'],
-                    onSuccess: (reloaded) => {
-                        onThemeSaved?.(
-                            payload.name,
-                            (reloaded.props.themes?.items as Theme[]) ?? [],
-                        );
-                        close();
-                        toast.success(t('Theme saved successfully'), {
-                            testId: 'theme-saved-toast',
-                        });
-                        setLoading(false);
-                    },
-                });
-            },
-            onError(errors: Record<string, string>) {
-                toast.error(t(errors?.name ?? 'Failed to save theme'));
-                setLoading(false);
-            },
-        });
+    function save() {
+        if (name.trim() && !saving) onSave(name);
     }
 
     return (
@@ -100,9 +64,9 @@ export default function DialogSave({
                         className="mt-4"
                         data-testid="save-theme-name"
                         placeholder={t('Theme name')}
-                        disabled={loading}
+                        disabled={saving}
                         onChange={(e) => setName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                        onKeyDown={(e) => e.key === 'Enter' && save()}
                     />
                 </div>
                 <div className="bg-muted/50 border-t p-4">
@@ -111,18 +75,18 @@ export default function DialogSave({
                             variant="outline"
                             className="dark:hover:bg-accent dark:hover:text-accent-foreground w-full"
                             data-testid="save-theme-cancel"
-                            disabled={loading}
-                            onClick={close}
+                            disabled={saving}
+                            onClick={() => onOpenChange(false)}
                         >
                             {t('Cancel')}
                         </Button>
                         <Button
                             className="w-full"
                             data-testid="save-theme-submit"
-                            disabled={!name.trim() || loading}
-                            onClick={handleSave}
+                            disabled={!name.trim() || saving}
+                            onClick={save}
                         >
-                            {loading ? t('Saving...') : t('Save')}
+                            {saving ? t('Saving...') : t('Save')}
                         </Button>
                     </div>
                 </div>
