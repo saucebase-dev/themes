@@ -493,6 +493,45 @@ export default function ThemePanel() {
         });
     }
 
+    // ── Save as (a new user theme) ──────────────────────────────────────────
+
+    const [savingAs, setSavingAs] = useState(false);
+    // Its own request, so a failure re-enables the dialog's Save.
+    const saveAsHttp = useHttp({}, (message) => {
+        toast.error(t(message));
+        setSavingAs(false);
+    });
+
+    function saveAs(name: string): void {
+        const payload = toJson(name);
+
+        setSavingAs(true);
+        saveAsHttp.transform(() => payload);
+        saveAsHttp.post(route('themes.store'), {
+            onSuccess() {
+                router.reload({
+                    only: ['themes'],
+                    onSuccess: (reloaded) => {
+                        void selectTheme(
+                            payload.name,
+                            null,
+                            (reloaded.props.themes?.items as Theme[]) ?? [],
+                        );
+                        setSaveOpen(false);
+                        toast.success(t('Theme saved successfully'), {
+                            testId: 'theme-saved-toast',
+                        });
+                        setSavingAs(false);
+                    },
+                });
+            },
+            onError(errors: Record<string, string>) {
+                toast.error(t(errors?.name ?? 'Failed to save theme'));
+                setSavingAs(false);
+            },
+        });
+    }
+
     async function remove(): Promise<void> {
         const theme = findTheme(m.selectedId);
         if (!theme?.editable) return;
@@ -890,10 +929,8 @@ export default function ThemePanel() {
                     <DialogSave
                         open={saveOpen}
                         onOpenChange={setSaveOpen}
-                        toJson={toJson}
-                        onThemeSaved={(id, items) =>
-                            void selectTheme(id, null, items)
-                        }
+                        saving={savingAs}
+                        onSave={saveAs}
                     />
                 </SheetContent>
             </Sheet>

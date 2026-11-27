@@ -415,6 +415,43 @@ async function save(): Promise<void> {
     });
 }
 
+// ── Save as (a new user theme) ───────────────────────────────────────────────
+
+const savingAs = ref(false);
+
+function saveAs(name: string): void {
+    const payload = toJson(name);
+
+    useHttp(payload)
+        .withAllErrors()
+        .post(route('themes.store'), {
+            onBefore() {
+                savingAs.value = true;
+            },
+            onSuccess() {
+                router.reload({
+                    only: ['themes'],
+                    onSuccess: () => {
+                        selectTheme(payload.name);
+                        dialogSaveOpen.value = false;
+                        toast.success(trans('Theme saved successfully'), {
+                            testId: 'theme-saved-toast',
+                        });
+                        savingAs.value = false;
+                    },
+                });
+            },
+            onError: (errors) => {
+                if (errors?.name) toast.error(trans(errors.name));
+                else toast.error(trans('Failed to save theme'));
+                return true;
+            },
+            onFinish: () => {
+                savingAs.value = false;
+            },
+        });
+}
+
 // ── Delete (saved presets only) ──────────────────────────────────────────────
 
 async function remove(): Promise<void> {
@@ -1044,8 +1081,8 @@ const dialogCommandOpen = ref(false);
         />
         <DialogSave
             v-model="dialogSaveOpen"
-            :to-json="toJson"
-            :on-theme-saved="selectTheme"
+            :saving="savingAs"
+            @save="saveAs"
         />
     </template>
 </template>

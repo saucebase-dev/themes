@@ -147,9 +147,10 @@ documentElement inline styles  ← set by applyThemeVars() when a theme is activ
 | `resources/js/lib/panel.ts` | `themeToJson` (panel state → payload, incl. the other mode's cached edits and both modes' shadow scales), `isPerMode`, `modeEdits`, mode sync helpers |
 | `resources/js/lib/color.ts` | Colour conversions, `colorToHsv`, `contrastingIconColor`, `swatchBackground` |
 | `resources/js/lib/tailwind.ts` | Tailwind palette for the colour picker, `filterPalette` |
-| `resources/js/components/ThemePanel` | The editor |
+| `resources/js/components/ThemePanel` | The editor; reads the page and sends every theme request (save, Save as, delete, Set as default). No stories: E2E covers it |
 | `resources/js/components/ThemePicker` | Theme switcher |
-| `resources/js/components/DialogSave` | Save as dialog (same layout as the app confirm dialog) |
+| `resources/js/components/DialogSave` | Save as dialog (same layout as the app confirm dialog): takes `saving`, emits `save` with the name; ThemePanel posts `themes.store` and closes it |
+| `resources/js/{vue,react}/components/*.stories.{ts,tsx}` | Stories for the pickers, inputs and dialogs; they take props only, so they need no page |
 
 ---
 

@@ -58,7 +58,7 @@ export default function LinkToggle({
                     tabIndex={0}
                     aria-label={label}
                     aria-pressed={value === null ? 'mixed' : value}
-                    className={`focus-visible:ring-ring flex cursor-pointer items-center rounded-full p-1.5 text-xs font-medium shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${stateClass} ${className}`}
+                    className={`focus-visible:ring-ring inline-flex cursor-pointer items-center rounded-full p-1.5 text-xs font-medium shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${stateClass} ${className}`}
                     onClick={toggle}
                     onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') toggle(e);
